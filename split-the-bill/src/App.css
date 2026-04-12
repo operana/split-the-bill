@@ -1,0 +1,320 @@
+.bill-app {
+  text-align: left;
+  padding: 32px 28px 64px;
+  max-width: 900px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.bill-header {
+  margin-bottom: 28px;
+}
+
+.bill-header h1 {
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+
+.bill-lede {
+  margin: 0;
+  max-width: 52ch;
+}
+
+.bill-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 20px 22px;
+  margin-bottom: 20px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.bill-panel h2 {
+  font-size: 1.15rem;
+  margin: 0 0 14px;
+}
+
+.bill-muted {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.bill-hint {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.bill-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.bill-input {
+  font: inherit;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.bill-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.bill-input-grow {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.bill-input-money {
+  width: 7rem;
+  flex-shrink: 0;
+}
+
+.bill-input-block {
+  width: 100%;
+  max-width: 12rem;
+  box-sizing: border-box;
+}
+
+.bill-btn {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+
+.bill-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bill-btn-primary {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.bill-btn-ghost {
+  background: transparent;
+}
+
+.bill-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.bill-items {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bill-item-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--social-bg);
+}
+
+.bill-item-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bill-assign {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bill-assign legend {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-h);
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.bill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.bill-chip input {
+  margin: 0;
+}
+
+.bill-warn {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  color: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bill-warn {
+    color: #fbbf24;
+  }
+}
+
+.bill-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 720px) {
+  .bill-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bill-label {
+  display: block;
+  font-weight: 500;
+  color: var(--text-h);
+  margin-bottom: 6px;
+}
+
+.bill-tip-modes {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.bill-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.bill-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bill-pill {
+  font: inherit;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.bill-pill-active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.bill-manual-tip {
+  margin-top: 4px;
+}
+
+.bill-tip-pct {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: var(--text-h);
+}
+
+.bill-summary-meta {
+  margin-bottom: 16px;
+}
+
+.bill-table-wrap {
+  overflow-x: auto;
+}
+
+.bill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-table th,
+.bill-table td {
+  text-align: right;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bill-table th:first-child,
+.bill-table td:first-child {
+  text-align: left;
+}
+
+.bill-table thead th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.bill-table tbody th {
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.bill-table tfoot th,
+.bill-table tfoot td {
+  border-bottom: none;
+  padding-top: 14px;
+  font-weight: 600;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
