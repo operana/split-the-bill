@@ -569,5 +569,9 @@ html, body {
 @media (max-width: 600px) {
   .scroll-hint {
     display: block;
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 6px;
+    text-align: right;
   }
 }
