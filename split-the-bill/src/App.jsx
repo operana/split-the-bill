@@ -522,7 +522,7 @@ export default function App() {
       <section className="bill-panel bill-summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
         <p className="bill-muted bill-summary-meta">
-          Surcharge, tax, and tip owed are based on each person&apos;s food subtotal, not an even split across the table.
+          
           {tipMode === 'preset' ? (
             <>
               {' '}
