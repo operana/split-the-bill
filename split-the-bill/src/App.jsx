@@ -540,6 +540,9 @@ export default function App() {
         </p>
 
         <div className="bill-table-wrap">
+          <p className="scroll-hint" style={{ fontSize: '0.75rem', color: '#888', marginBottom: '6px', textAlign: 'right' }}>
+            ← scroll to see full summary →
+          </p>
           <table className="bill-table">
             <caption className="sr-only">Per-person amounts</caption>
             <thead>

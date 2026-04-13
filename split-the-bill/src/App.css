@@ -561,3 +561,13 @@ html, body {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+.scroll-hint {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .scroll-hint {
+    display: block;
+  }
+}
