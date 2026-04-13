@@ -586,7 +586,7 @@ html, body {
 
 @media (max-width: 600px) {
   .bill-app {
-    padding-left: 1px;
-    padding-right: 1px;
+    padding-left: 5px;
+    padding-right: 5px;
   }
 }
