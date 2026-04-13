@@ -263,7 +263,7 @@ export default function App() {
             Date <strong>{RECEIPT_DATE}</strong>
           </span>
           <span>
-            Table <strong>—</strong>
+            Table <strong>VIP</strong>
           </span>
           <span>
             Guests <strong>{people.length}</strong>
