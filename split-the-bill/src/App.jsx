@@ -1,8 +1,16 @@
 import { useMemo, useState } from 'react'
+
+const RECEIPT_DATE = new Date().toLocaleDateString('en-US', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
 import './App.css'
 
 const TIP_PRESETS = [15, 18, 20]
 const DEFAULT_TAX = 11.75
+const DEFAULT_SURCHARGE = 0
 
 function uid() {
   return crypto.randomUUID()
@@ -20,19 +28,66 @@ function formatMoney(n) {
   }).format(n)
 }
 
+function buildShareText({
+  people,
+  totals,
+  taxPercent,
+  surchargePercent,
+  tipMode,
+  tipPreset,
+}) {
+  const taxLabel = parseMoney(taxPercent).toFixed(2)
+  const surchargeLabel = parseMoney(surchargePercent).toFixed(2)
+  const lines = ['Split the bill — totals', '']
+
+  for (const r of totals.rows) {
+    const idx = people.findIndex((x) => x.id === r.person.id)
+    const name = r.person.name.trim() || `Person ${idx + 1}`
+    lines.push(`${name}`)
+    lines.push(`  Subtotal: ${formatMoney(r.subtotal)}`)
+    lines.push(`  Surcharge (${surchargeLabel}%): ${formatMoney(r.surcharge)}`)
+    lines.push(`  Tax (${taxLabel}%): ${formatMoney(r.tax)}`)
+    lines.push(
+      `  Tip${tipMode === 'preset' ? ` (${tipPreset}%)` : ' (manual share)'}: ${formatMoney(r.tip)}`,
+    )
+    lines.push(`  Total: ${formatMoney(r.total)}`)
+    lines.push('')
+  }
+
+  lines.push('Bill (assigned shares)')
+  lines.push(`  Subtotal: ${formatMoney(totals.grand.subtotal)}`)
+  lines.push(`  Surcharge: ${formatMoney(totals.grand.surcharge)}`)
+  lines.push(`  Tax: ${formatMoney(totals.grand.tax)}`)
+  lines.push(`  Tip: ${formatMoney(totals.grand.tip)}`)
+  lines.push(`  Total: ${formatMoney(totals.grand.total)}`)
+
+  return lines.join('\n')
+}
+
+function smsHrefForBody(body) {
+  const q = encodeURIComponent(body)
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) return `sms:&body=${q}`
+  return `sms:?body=${q}`
+}
+
 function round2(n) {
   return Math.round(n * 100) / 100
 }
 
 export default function App() {
-  const [people, setPeople] = useState(() => [{ id: uid(), name: '' }])
+  const [people, setPeople] = useState(() => [
+    { id: uid(), name: '' },
+    { id: uid(), name: '' },
+  ])
   const [items, setItems] = useState(() => [])
   const [taxPercent, setTaxPercent] = useState(String(DEFAULT_TAX))
+  const [surchargePercent, setSurchargePercent] = useState(String(DEFAULT_SURCHARGE))
   const [tipMode, setTipMode] = useState('preset')
   const [tipPreset, setTipPreset] = useState(18)
   const [manualTip, setManualTip] = useState('')
 
   const taxRate = parseMoney(taxPercent) / 100
+  const surchargeRate = parseMoney(surchargePercent) / 100
 
   const totals = useMemo(() => {
     const personSubtotals = Object.fromEntries(people.map((p) => [p.id, 0]))
@@ -69,12 +124,14 @@ export default function App() {
 
     const rows = people.map((p) => {
       const sub = personSubtotals[p.id] ?? 0
+      const surcharge = round2(sub * surchargeRate)
       const tax = round2(sub * taxRate)
       const tip = round2(sub * tipPercentEffective)
-      const total = round2(sub + tax + tip)
+      const total = round2(sub + surcharge + tax + tip)
       return {
         person: p,
         subtotal: sub,
+        surcharge,
         tax,
         tip,
         total,
@@ -83,6 +140,7 @@ export default function App() {
 
     const grand = {
       subtotal: round2(rows.reduce((s, r) => s + r.subtotal, 0)),
+      surcharge: round2(rows.reduce((s, r) => s + r.surcharge, 0)),
       tax: round2(rows.reduce((s, r) => s + r.tax, 0)),
       tip: round2(rows.reduce((s, r) => s + r.tip, 0)),
       total: round2(rows.reduce((s, r) => s + r.total, 0)),
@@ -97,7 +155,33 @@ export default function App() {
       manualTipPercentDisplay,
       grand,
     }
-  }, [people, items, taxRate, tipMode, tipPreset, manualTip])
+  }, [people, items, taxRate, surchargeRate, tipMode, tipPreset, manualTip])
+
+  const shareText = useMemo(
+    () =>
+      buildShareText({
+        people,
+        totals,
+        taxPercent,
+        surchargePercent,
+        tipMode,
+        tipPreset,
+      }),
+    [people, totals, taxPercent, surchargePercent, tipMode, tipPreset],
+  )
+
+  const mailtoHref = useMemo(
+    () =>
+      `mailto:?subject=${encodeURIComponent('Split the bill — totals')}&body=${encodeURIComponent(shareText)}`,
+    [shareText],
+  )
+
+  const smsHref = useMemo(() => smsHrefForBody(shareText), [shareText])
+
+  const checkNumber = useMemo(
+    () => String(Math.floor(100000 + Math.random() * 900000)),
+    [],
+  )
 
   function addPerson() {
     setPeople((prev) => [...prev, { id: uid(), name: '' }])
@@ -154,18 +238,62 @@ export default function App() {
     )
   }
 
+  function resetAll() {
+    if (!window.confirm('Are you sure you want to reset?')) return
+    setPeople([
+      { id: uid(), name: '' },
+      { id: uid(), name: '' },
+    ])
+    setItems([])
+    setTaxPercent(String(DEFAULT_TAX))
+    setSurchargePercent(String(DEFAULT_SURCHARGE))
+    setTipMode('preset')
+    setTipPreset(18)
+    setManualTip('')
+  }
+
   return (
-    <div className="bill-app">
-      <header className="bill-header">
-        <h1>Split the bill</h1>
+    <div className="bill-app bill-receipt">
+      <header className="bill-header bill-receipt-header">
+        <p className="bill-receipt-kicker">Guest check</p>
+        <div className="bill-receipt-meta">
+          <span>
+            Date <strong>{RECEIPT_DATE}</strong>
+          </span>
+          <span>
+            Table <strong>—</strong>
+          </span>
+          <span>
+            Guests <strong>{people.length}</strong>
+          </span>
+          <span>
+            Check #{' '}
+            <strong className="bill-check-number">{checkNumber}</strong>
+          </span>
+        </div>
+        <div className="bill-header-top">
+          <h1 className="bill-title-diner">Split the bill</h1>
+          <button type="button" className="bill-btn bill-btn-ghost" onClick={resetAll}>
+            Reset
+          </button>
+        </div>
         <p className="bill-lede">
-          Add people and line items, assign who shared each item, then review
-          tax and tip per person.
+          Add people and line items, assign who ate or shared each item, then review
+          tax, optional surcharge, and tip per person.
         </p>
       </header>
 
+      <div className="bill-category-rail" aria-hidden="true">
+        People — Items — Tax &amp; tip — Total
+      </div>
+
       <section className="bill-panel" aria-labelledby="people-heading">
-        <h2 id="people-heading">People</h2>
+        <div className="bill-panel-heading-row">
+          <h2 id="people-heading">People</h2>
+          <button type="button" className="bill-btn bill-btn-primary" onClick={addPerson}>
+            Add Another Person
+          </button>
+        </div>
         <ul className="bill-list">
           {people.map((p) => (
             <li key={p.id} className="bill-row">
@@ -191,31 +319,23 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <button type="button" className="bill-btn bill-btn-primary" onClick={addPerson}>
-          Add person
-        </button>
       </section>
 
-      <section className="bill-panel" aria-labelledby="items-heading">
+      <section
+        className="bill-panel bill-panel--items"
+        aria-labelledby="items-heading"
+      >
         <h2 id="items-heading">Items</h2>
+        <p className="bill-muted bill-items-lede">
+          Enter each price first; the item name is optional.
+        </p>
         {items.length === 0 ? (
-          <p className="bill-muted">No items yet. Add a line item to get started.</p>
+          <p className="bill-muted">No items yet. Add a line with a price to get started.</p>
         ) : null}
         <ul className="bill-items">
           {items.map((it) => (
             <li key={it.id} className="bill-item-card">
               <div className="bill-item-top">
-                <label className="sr-only" htmlFor={`item-label-${it.id}`}>
-                  Item description
-                </label>
-                <input
-                  id={`item-label-${it.id}`}
-                  className="bill-input bill-input-grow"
-                  type="text"
-                  placeholder="Item (e.g. Pizza)"
-                  value={it.label}
-                  onChange={(e) => updateItem(it.id, { label: e.target.value })}
-                />
                 <label className="sr-only" htmlFor={`item-price-${it.id}`}>
                   Price
                 </label>
@@ -227,6 +347,17 @@ export default function App() {
                   placeholder="0.00"
                   value={it.price}
                   onChange={(e) => updateItem(it.id, { price: e.target.value })}
+                />
+                <label className="sr-only" htmlFor={`item-label-${it.id}`}>
+                  Item name (optional)
+                </label>
+                <input
+                  id={`item-label-${it.id}`}
+                  className="bill-input bill-input-grow"
+                  type="text"
+                  placeholder="Item (optional)"
+                  value={it.label}
+                  onChange={(e) => updateItem(it.id, { label: e.target.value })}
                 />
                 <button
                   type="button"
@@ -256,7 +387,7 @@ export default function App() {
                 </div>
                 {totals.unassignedItems.includes(it.id) ? (
                   <p className="bill-warn" role="status">
-                    Select at least one person so this item counts toward a share.
+                    Select at least one person.
                   </p>
                 ) : null}
               </fieldset>
@@ -312,18 +443,28 @@ export default function App() {
             </div>
             {tipMode === 'preset' ? (
               <div className="bill-presets" role="group" aria-label="Tip percentage">
-                {TIP_PRESETS.map((pct) => (
-                  <button
-                    key={pct}
-                    type="button"
-                    className={
-                      tipPreset === pct ? 'bill-pill bill-pill-active' : 'bill-pill'
-                    }
-                    onClick={() => setTipPreset(pct)}
-                  >
-                    {pct}%
-                  </button>
-                ))}
+                {TIP_PRESETS.map((pct) => {
+                  const tipTotal = round2(totals.assignedSubtotalSum * (pct / 100))
+                  const amtId = `tip-preset-amt-${pct}`
+                  return (
+                    <div key={pct} className="bill-preset-group">
+                      <button
+                        type="button"
+                        className={
+                          tipPreset === pct ? 'bill-pill bill-pill-active' : 'bill-pill'
+                        }
+                        onClick={() => setTipPreset(pct)}
+                        aria-describedby={amtId}
+                        aria-pressed={tipPreset === pct}
+                      >
+                        {pct}%
+                      </button>
+                      <span id={amtId} className="bill-preset-amt">
+                        {formatMoney(tipTotal)}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <div className="bill-manual-tip">
@@ -356,13 +497,31 @@ export default function App() {
             )}
           </div>
         </div>
+        <div className="bill-surcharge-field">
+          <label className="bill-label" htmlFor="surcharge-pct">
+            Surcharge (%)
+          </label>
+          <p className="bill-hint">
+            Optional fee some venues add (e.g. service or card processing).
+            Applied to each person&apos;s food share, like tax.
+          </p>
+          <input
+            id="surcharge-pct"
+            className="bill-input bill-input-block"
+            type="text"
+            inputMode="decimal"
+            placeholder="0"
+            value={surchargePercent}
+            onChange={(e) => setSurchargePercent(e.target.value)}
+          />
+        </div>
       </section>
 
       <section className="bill-panel bill-summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
         <p className="bill-muted bill-summary-meta">
-          Tax and tip use each person&apos;s food subtotal (before tax), not an
-          even split across the table.
+          Surcharge, tax, and tip use each person&apos;s food subtotal (before
+          those charges), not an even split across the table.
           {tipMode === 'preset' ? (
             <>
               {' '}
@@ -385,6 +544,9 @@ export default function App() {
               <tr>
                 <th scope="col">Person</th>
                 <th scope="col">Subtotal</th>
+                <th scope="col">
+                  Surcharge ({parseMoney(surchargePercent).toFixed(2)}%)
+                </th>
                 <th scope="col">Tax ({parseMoney(taxPercent).toFixed(2)}%)</th>
                 <th scope="col">
                   Tip
@@ -401,6 +563,7 @@ export default function App() {
                       `Person ${people.findIndex((x) => x.id === r.person.id) + 1}`}
                   </th>
                   <td>{formatMoney(r.subtotal)}</td>
+                  <td>{formatMoney(r.surcharge)}</td>
                   <td>{formatMoney(r.tax)}</td>
                   <td>{formatMoney(r.tip)}</td>
                   <td>
@@ -413,6 +576,7 @@ export default function App() {
               <tr>
                 <th scope="row">Bill (assigned shares)</th>
                 <td>{formatMoney(totals.grand.subtotal)}</td>
+                <td>{formatMoney(totals.grand.surcharge)}</td>
                 <td>{formatMoney(totals.grand.tax)}</td>
                 <td>{formatMoney(totals.grand.tip)}</td>
                 <td>
@@ -422,7 +586,34 @@ export default function App() {
             </tfoot>
           </table>
         </div>
+
+        <div className="bill-share" aria-labelledby="share-heading">
+          <h3 id="share-heading" className="bill-share-heading">
+            Share totals
+          </h3>
+          <p className="bill-muted bill-share-hint">
+            Opens your mail or messages app with this summary—choose who to send
+            it to there.
+          </p>
+          <div className="bill-share-actions">
+            <a className="bill-btn bill-btn-primary bill-share-link" href={mailtoHref}>
+              Email
+            </a>
+            <a className="bill-btn bill-btn-primary bill-share-link" href={smsHref}>
+              Text
+            </a>
+          </div>
+        </div>
       </section>
+
+      <footer className="bill-receipt-footer">
+        <p>
+          Thank you · Please come again{' '}
+          <span className="bill-receipt-smile" aria-hidden="true">
+            ☺
+          </span>
+        </p>
+      </footer>
     </div>
   )
 }
