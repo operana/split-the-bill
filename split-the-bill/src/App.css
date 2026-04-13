@@ -550,11 +550,8 @@ html, body {
 }
 
 .bill-app {
-  width: 100%;
-  max-width: 100%;
-  padding-left: 16px;
-  padding-right: 16px;
-  box-sizing: border-box;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 .bill-table-wrap {
@@ -573,5 +570,12 @@ html, body {
     color: #c62828 !important;
     margin-bottom: 6px;
     text-align: right;
+  }
+}
+
+@media (max-width: 600px) {
+  .bill-app {
+    padding-left: 0;
+    padding-right: 0;
   }
 }

@@ -578,7 +578,7 @@ export default function App() {
             </tbody>
             <tfoot>
               <tr>
-                <th scope="row">Bill (assigned shares)</th>
+                <th scope="row">Bill Totals</th>
                 <td>{formatMoney(totals.grand.subtotal)}</td>
                 <td>{formatMoney(totals.grand.surcharge)}</td>
                 <td>{formatMoney(totals.grand.tax)}</td>
@@ -593,7 +593,7 @@ export default function App() {
 
         <div className="bill-share" aria-labelledby="share-heading">
           <h3 id="share-heading" className="bill-share-heading">
-            Share totals
+            Share Summary
           </h3>
           <div className="bill-share-actions">
             <a className="bill-btn bill-btn-primary bill-share-link" href={mailtoHref}>
