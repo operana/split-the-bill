@@ -570,7 +570,7 @@ html, body {
   .scroll-hint {
     display: block;
     font-size: 0.75rem;
-    color: #c62828;
+    color: #c62828 !important;
     margin-bottom: 6px;
     text-align: right;
   }
