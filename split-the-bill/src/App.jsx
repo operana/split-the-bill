@@ -522,12 +522,11 @@ export default function App() {
       <section className="bill-panel bill-summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
         <p className="bill-muted bill-summary-meta">
-          Surcharge, tax, and tip use each person&apos;s food subtotal (before
-          those charges), not an even split across the table.
+          Surcharge, tax, and tip owed are based on each person&apos;s food subtotal, not an even split across the table.
           {tipMode === 'preset' ? (
             <>
               {' '}
-              Tip rate: <strong>{tipPreset}%</strong> of each subtotal.
+              
             </>
           ) : (
             <>
@@ -540,7 +539,7 @@ export default function App() {
         </p>
 
         <div className="bill-table-wrap">
-          <p className="scroll-hint" style={{ fontSize: '0.75rem', color: '#888', marginBottom: '6px', textAlign: 'right' }}>
+        <p className="scroll-hint">
             ← scroll to see full summary →
           </p>
           <table className="bill-table">
@@ -596,10 +595,6 @@ export default function App() {
           <h3 id="share-heading" className="bill-share-heading">
             Share totals
           </h3>
-          <p className="bill-muted bill-share-hint">
-            Opens your mail or messages app with this summary—choose who to send
-            it to there.
-          </p>
           <div className="bill-share-actions">
             <a className="bill-btn bill-btn-primary bill-share-link" href={mailtoHref}>
               Email
