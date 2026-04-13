@@ -612,6 +612,7 @@ export default function App() {
           <span className="bill-receipt-smile" aria-hidden="true">
             ☺
           </span>
+          - Leah
         </p>
       </footer>
     </div>
