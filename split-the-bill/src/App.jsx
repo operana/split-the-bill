@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 
 
@@ -31,6 +31,7 @@ function formatMoney(n) {
 }
 
 function buildShareText({
+  restaurantTitle,
   people,
   totals,
   taxPercent,
@@ -40,28 +41,31 @@ function buildShareText({
 }) {
   const taxLabel = parseMoney(taxPercent).toFixed(2)
   const surchargeLabel = parseMoney(surchargePercent).toFixed(2)
-  const lines = ['Split the bill — totals', '']
+  const title = String(restaurantTitle ?? '').trim()
+  const lines = [title ? `Split the bill — ${title}` : 'Split the bill — totals', '']
 
   for (const r of totals.rows) {
     const idx = people.findIndex((x) => x.id === r.person.id)
     const name = r.person.name.trim() || `Person ${idx + 1}`
     lines.push(`${name}`)
+    lines.push(`  TOTAL: ${formatMoney(r.total)}`)
     lines.push(`  Subtotal: ${formatMoney(r.subtotal)}`)
     lines.push(`  Surcharge (${surchargeLabel}%): ${formatMoney(r.surcharge)}`)
     lines.push(`  Tax (${taxLabel}%): ${formatMoney(r.tax)}`)
     lines.push(
       `  Tip${tipMode === 'preset' ? ` (${tipPreset}%)` : ' (manual share)'}: ${formatMoney(r.tip)}`,
     )
-    lines.push(`  Total: ${formatMoney(r.total)}`)
+
+    lines.push('')
     lines.push('')
   }
 
-  lines.push('Bill (assigned shares)')
+  lines.push('Receipt (all items)')
+  lines.push(`  Total: ${formatMoney(totals.grand.total)}`)
   lines.push(`  Subtotal: ${formatMoney(totals.grand.subtotal)}`)
   lines.push(`  Surcharge: ${formatMoney(totals.grand.surcharge)}`)
   lines.push(`  Tax: ${formatMoney(totals.grand.tax)}`)
   lines.push(`  Tip: ${formatMoney(totals.grand.tip)}`)
-  lines.push(`  Total: ${formatMoney(totals.grand.total)}`)
 
   return lines.join('\n')
 }
@@ -77,6 +81,12 @@ function round2(n) {
 }
 
 export default function App() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const [restaurantTitle, setRestaurantTitle] = useState('')
+  const [bulkPricesText, setBulkPricesText] = useState('')
+  const [bulkAddError, setBulkAddError] = useState('')
+  const [celebrateReady, setCelebrateReady] = useState(false)
+  const [copyStatus, setCopyStatus] = useState('')
   const [people, setPeople] = useState(() => [
     { id: uid(), name: '' },
     { id: uid(), name: '' },
@@ -162,6 +172,7 @@ export default function App() {
   const shareText = useMemo(
     () =>
       buildShareText({
+        restaurantTitle,
         people,
         totals,
         taxPercent,
@@ -169,13 +180,18 @@ export default function App() {
         tipMode,
         tipPreset,
       }),
-    [people, totals, taxPercent, surchargePercent, tipMode, tipPreset],
+    [restaurantTitle, people, totals, taxPercent, surchargePercent, tipMode, tipPreset],
   )
 
   const mailtoHref = useMemo(
     () =>
-      `mailto:?subject=${encodeURIComponent('Split the bill — totals')}&body=${encodeURIComponent(shareText)}`,
-    [shareText],
+      `mailto:?subject=${encodeURIComponent(
+        restaurantTitle.trim() ? `Split the bill — ${restaurantTitle.trim()}` : 'Split the bill — totals',
+      )}&body=${encodeURIComponent(
+        // Many mail clients expect CRLF in mailto bodies for line breaks.
+        shareText.replace(/\n/g, '\r\n'),
+      )}`,
+    [shareText, restaurantTitle],
   )
 
   const smsHref = useMemo(() => smsHrefForBody(shareText), [shareText])
@@ -184,6 +200,78 @@ export default function App() {
     () => String(Math.floor(100000 + Math.random() * 900000)),
     [],
   )
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!mq) return
+    const apply = () => setPrefersReducedMotion(Boolean(mq.matches))
+    apply()
+    if (mq.addEventListener) mq.addEventListener('change', apply)
+    else mq.addListener(apply)
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', apply)
+      else mq.removeListener(apply)
+    }
+  }, [])
+
+  function sparkleBurst(targetEl) {
+    if (!targetEl || prefersReducedMotion) return
+
+    const colors = ['#ff4d7d', '#ff8a00', '#ffd400', '#2ee59d', '#2d9cff', '#7f6bff']
+    const count = 14
+    const rect = targetEl.getBoundingClientRect()
+
+    if (getComputedStyle(targetEl).position === 'static') {
+      targetEl.style.position = 'relative'
+    }
+
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('span')
+      const isStar = i % 4 === 0
+      const isConfetti = !isStar && i % 2 === 0
+      p.className = isStar ? 'bill-sparkle bill-sparkle--star' : 'bill-sparkle'
+      if (isConfetti) p.className += ' bill-sparkle--confetti'
+
+      const c = colors[Math.floor(Math.random() * colors.length)]
+      p.style.setProperty('--c', c)
+
+      const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.35 - 0.175)
+      const dist = 14 + Math.random() * 18
+      const dx = Math.cos(angle) * dist
+      const dy = Math.sin(angle) * dist - 10
+      const rot = (Math.random() * 240 - 120).toFixed(1)
+
+      p.style.setProperty('--dx', `${dx.toFixed(2)}px`)
+      p.style.setProperty('--dy', `${dy.toFixed(2)}px`)
+      p.style.setProperty('--rot', `${rot}deg`)
+
+      const size = isStar ? 8 + Math.random() * 4 : 5 + Math.random() * 5
+      p.style.width = `${Math.round(size)}px`
+      p.style.height = `${Math.round(size)}px`
+      p.style.left = `${rect.width / 2}px`
+      p.style.top = `${rect.height / 2}px`
+
+      p.addEventListener(
+        'animationend',
+        () => {
+          p.remove()
+        },
+        { once: true },
+      )
+
+      targetEl.appendChild(p)
+    }
+  }
+
+  function withSparkle(onClick) {
+    return (e) => {
+      sparkleBurst(e.currentTarget)
+      onClick(e)
+    }
+  }
+
+  const shareReadyPrevRef = useRef(false)
+  const celebrateTimerRef = useRef(null)
 
   function addPerson() {
     setPeople((prev) => [...prev, { id: uid(), name: '' }])
@@ -203,16 +291,116 @@ export default function App() {
     setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)))
   }
 
-  function addItem() {
-    setItems((prev) => [
-      ...prev,
-      {
-        id: uid(),
-        label: '',
-        price: '',
-        assigneeIds: [],
-      },
-    ])
+  function parseBulkPrices(text) {
+    const tokens = String(text)
+      .replace(/\r\n/g, '\n')
+      .split(/[\s,]+/g)
+      .map((t) => t.trim())
+      .filter(Boolean)
+
+    const prices = []
+    for (const tok of tokens) {
+      const n = round2(parseMoney(tok))
+      if (!Number.isFinite(n)) continue
+      // Keep even 0.00 if user explicitly entered it.
+      if (n === 0 && !/0/.test(tok)) continue
+      prices.push(n.toFixed(2))
+    }
+    return prices
+  }
+
+  const bulkParsedPrices = useMemo(() => parseBulkPrices(bulkPricesText), [bulkPricesText])
+
+  const billProgress = useMemo(() => {
+    const peopleAdded = people.length > 0
+    const itemsAdded = items.length > 0
+    const pricesEntered =
+      items.length > 0 && items.every((it) => String(it.price ?? '').trim().length > 0)
+    const itemsAssigned = items.length > 0 && totals.unassignedItems.length === 0
+    const readyToShare = peopleAdded && itemsAdded && pricesEntered && itemsAssigned
+
+    const steps = [
+      { id: 'people', label: 'People', done: peopleAdded },
+      { id: 'items', label: 'Items', done: itemsAdded },
+      { id: 'prices', label: 'Prices', done: pricesEntered },
+      { id: 'assigned', label: 'Assigned', done: itemsAssigned },
+      { id: 'share', label: 'Ready', done: readyToShare },
+    ]
+
+    const doneCount = steps.filter((s) => s.done).length
+    const pct = Math.round((doneCount / steps.length) * 100)
+
+    const missingPricesCount = items.filter((it) => String(it.price ?? '').trim().length === 0)
+      .length
+    const unassignedCount = totals.unassignedItems.length
+
+    let hint = ''
+    if (!itemsAdded) hint = 'Add some item prices to get started.'
+    else if (missingPricesCount > 0)
+      hint = `${missingPricesCount} item${missingPricesCount === 1 ? '' : 's'} missing a price.`
+    else if (unassignedCount > 0)
+      hint = `${unassignedCount} item${unassignedCount === 1 ? '' : 's'} still need people selected.`
+    else hint = 'Nice! Everything is assigned.'
+
+    return { steps, doneCount, pct, readyToShare, hint }
+  }, [people.length, items, totals.unassignedItems])
+
+  useEffect(() => {
+    const prev = shareReadyPrevRef.current
+    const now = billProgress.readyToShare
+    shareReadyPrevRef.current = now
+
+    if (!prev && now) {
+      setCelebrateReady(true)
+      if (celebrateTimerRef.current) window.clearTimeout(celebrateTimerRef.current)
+      celebrateTimerRef.current = window.setTimeout(() => setCelebrateReady(false), 2200)
+    }
+
+    return () => {
+      if (celebrateTimerRef.current) window.clearTimeout(celebrateTimerRef.current)
+    }
+  }, [billProgress.readyToShare])
+
+  function addItemsFromBulk() {
+    const prices = parseBulkPrices(bulkPricesText)
+
+    if (prices.length === 0) {
+      setBulkAddError('Enter at least one price.')
+      return
+    }
+
+    setBulkAddError('')
+    const next = prices.map((p) => ({
+      id: uid(),
+      label: '',
+      price: p,
+      assigneeIds: [],
+    }))
+    setItems((prev) => [...prev, ...next])
+    setBulkPricesText('')
+  }
+
+  async function copyShareToClipboard() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText)
+      } else {
+        const ta = document.createElement('textarea')
+        ta.value = shareText
+        ta.setAttribute('readonly', '')
+        ta.style.position = 'fixed'
+        ta.style.top = '-1000px'
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      }
+      setCopyStatus('Copied!')
+      window.setTimeout(() => setCopyStatus(''), 1600)
+    } catch {
+      setCopyStatus('Could not copy.')
+      window.setTimeout(() => setCopyStatus(''), 2000)
+    }
   }
 
   function updateItem(id, patch) {
@@ -242,6 +430,7 @@ export default function App() {
 
   function resetAll() {
     if (!window.confirm('Are you sure you want to reset?')) return
+    setRestaurantTitle('')
     setPeople([
       { id: uid(), name: '' },
       { id: uid(), name: '' },
@@ -275,13 +464,26 @@ export default function App() {
         </div>
         <div className="bill-header-top">
           <h1 className="bill-title-diner">Split the bill</h1>
-          <button type="button" className="bill-btn bill-btn-ghost" onClick={resetAll}>
+          <button type="button" className="bill-btn bill-btn-ghost" onClick={withSparkle(resetAll)}>
             Reset
           </button>
         </div>
+        <div className="bill-row" style={{ marginTop: 12 }}>
+          <label className="sr-only" htmlFor="restaurant-title">
+            Restaurant title
+          </label>
+          <input
+            id="restaurant-title"
+            className="bill-input bill-input-grow"
+            type="text"
+            placeholder="Restaurant title (optional)"
+            value={restaurantTitle}
+            onChange={(e) => setRestaurantTitle(e.target.value)}
+          />
+        </div>
         <p className="bill-lede">
           Add people and line items, assign who ate or shared each item, then review
-          tax, optional surcharge, and tip per person.
+          tax, optional surcharge, and tip per person. ☺︎ 
         </p>
       </header>
 
@@ -292,7 +494,7 @@ export default function App() {
       <section className="bill-panel" aria-labelledby="people-heading">
         <div className="bill-panel-heading-row">
           <h2 id="people-heading">People</h2>
-          <button type="button" className="bill-btn bill-btn-primary" onClick={addPerson}>
+          <button type="button" className="bill-btn bill-btn-primary" onClick={withSparkle(addPerson)}>
             Add Another Person
           </button>
         </div>
@@ -327,12 +529,43 @@ export default function App() {
         className="bill-panel bill-panel--items"
         aria-labelledby="items-heading"
       >
-        <h2 id="items-heading">Items</h2>
+        <h2 id="items-heading">
+          Items <span className="bill-count-pill">{items.length}</span>
+        </h2>
         <p className="bill-muted bill-items-lede">
-          Enter each price first; the item name is optional.
+          Add prices to create items, then assign who ate or shared each one.
         </p>
+        <div className="bill-row" style={{ marginTop: 10, marginBottom: 12 }}>
+          <input
+            className="bill-input bill-input-grow"
+            type="text"
+            placeholder="Type all prices (space/comma to separate). Example: 12.50, 8, 3.25"
+            value={bulkPricesText}
+            onChange={(e) => {
+              setBulkPricesText(e.target.value)
+              if (bulkAddError) setBulkAddError('')
+            }}
+          />
+          <button
+            type="button"
+            className="bill-btn bill-btn-primary"
+            onClick={withSparkle(addItemsFromBulk)}
+            disabled={bulkParsedPrices.length === 0}
+          >
+            Create {bulkParsedPrices.length || ''} item{bulkParsedPrices.length === 1 ? '' : 's'}
+          </button>
+        </div>
+        <p className="bill-muted bill-bulk-hint">
+          Detected <strong>{bulkParsedPrices.length}</strong> price
+          {bulkParsedPrices.length === 1 ? '' : 's'}.
+        </p>
+        {bulkAddError ? (
+          <p className="bill-warn" role="status" style={{ marginTop: -6 }}>
+            {bulkAddError}
+          </p>
+        ) : null}
         {items.length === 0 ? (
-          <p className="bill-muted">No items yet. Add a line with a price to get started.</p>
+          <p className="bill-muted">No items yet. Add a price to get started.</p>
         ) : null}
         <ul className="bill-items">
           {items.map((it) => (
@@ -396,9 +629,6 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <button type="button" className="bill-btn bill-btn-primary" onClick={addItem}>
-          Add item
-        </button>
       </section>
 
       <section className="bill-panel" aria-labelledby="tax-tip-heading">
@@ -578,7 +808,7 @@ export default function App() {
             </tbody>
             <tfoot>
               <tr>
-                <th scope="row">Bill Totals</th>
+                <th scope="row">Receipt Totals</th>
                 <td>{formatMoney(totals.grand.subtotal)}</td>
                 <td>{formatMoney(totals.grand.surcharge)}</td>
                 <td>{formatMoney(totals.grand.tax)}</td>
@@ -591,18 +821,38 @@ export default function App() {
           </table>
         </div>
 
-        <div className="bill-share" aria-labelledby="share-heading">
+        <div
+          className={billProgress.readyToShare ? 'bill-share bill-share--ready' : 'bill-share'}
+          aria-labelledby="share-heading"
+        >
           <h3 id="share-heading" className="bill-share-heading">
             Share Summary
           </h3>
+          
           <div className="bill-share-actions">
-            <a className="bill-btn bill-btn-primary bill-share-link" href={mailtoHref}>
+            <a
+              className="bill-btn bill-btn-primary bill-share-link"
+              href={mailtoHref}
+              onClick={(e) => sparkleBurst(e.currentTarget)}
+            >
               Email
             </a>
-            <a className="bill-btn bill-btn-primary bill-share-link" href={smsHref}>
+            <a
+              className="bill-btn bill-btn-primary bill-share-link"
+              href={smsHref}
+              onClick={(e) => sparkleBurst(e.currentTarget)}
+            >
               Text
             </a>
+            <button
+              type="button"
+              className="bill-btn bill-btn-primary"
+              onClick={withSparkle(copyShareToClipboard)}
+            >
+              Copy
+            </button>
           </div>
+          {copyStatus ? <p className="bill-muted bill-copy-status">{copyStatus}</p> : null}
         </div>
       </section>
 
