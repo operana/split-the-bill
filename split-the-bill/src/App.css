@@ -187,76 +187,11 @@ html, body {
 }
 
 .bill-panel--items {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
   background-color: rgba(255, 245, 248, 0.65);
   background-image: linear-gradient(var(--pink-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--pink-grid) 1px, transparent 1px);
   background-size: 100% 2rem, 1.75rem 100%;
   background-position: 0 0, 0 0;
-}
-
-.bill-items-inner {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.bill-items-pill-rail {
-  flex: 0 0 auto;
-  align-self: stretch;
-  width: 4rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.bill-items-pill-rail-track {
-  /* Fill rail height so sticky has room to travel the full Items panel */
-  flex: 1 1 0;
-  min-height: 0;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.bill-count-pill--rail {
-  position: sticky;
-  top: 0.75rem;
-  margin-left: 0;
-  z-index: 2;
-  box-shadow: 0 2px 12px rgba(80, 40, 60, 0.12);
-  /* Keeps count readable while scrolling long item lists on phones */
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-  height: auto;
-  min-height: 3.5rem;
-  min-width: 3.5rem;
-  padding: 10px 12px;
-  font-size: 1rem;
-  border-radius: 12px;
-}
-
-.bill-count-pill__value {
-  font-size: 1.45rem;
-  line-height: 1;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.bill-count-pill__label {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  line-height: 1;
-  opacity: 0.9;
-  max-width: 100%;
-  text-align: center;
 }
 
 .bill-panel h2 {
@@ -300,24 +235,6 @@ html, body {
     transform: translateY(0px) rotate(-7deg) scale(1);
     filter: blur(0);
   }
-}
-
-.bill-count-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.8em;
-  height: 1.55em;
-  padding: 0 0.55em;
-  margin-left: 8px;
-  border-radius: 999px;
-  font-size: 0.8em;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--diner-blue);
-  background: var(--diner-blue-soft);
-  border: 1px solid var(--accent-border);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
 }
 
 .bill-panel-heading-row {
@@ -891,42 +808,4 @@ html, body {
     padding-right: 12px;
   }
 
-  /* Floating item count: easier to see at a glance on small screens + notches */
-  .bill-panel--items {
-    gap: 8px;
-  }
-
-  .bill-items-pill-rail {
-    width: 4.5rem;
-  }
-
-  .bill-count-pill--rail {
-    /* Vertically centered in the visible viewport while scrolling the Items section */
-    top: calc(
-      env(safe-area-inset-top, 0px) +
-        (100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 0.5
-    );
-    top: calc(
-      env(safe-area-inset-top, 0px) +
-        (100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 0.5
-    );
-    transform: translateY(-50%);
-    z-index: 4;
-    min-width: 4rem;
-    min-height: 4rem;
-    padding: 12px 10px;
-    border-radius: 14px;
-    box-shadow:
-      0 2px 0 rgba(255, 255, 255, 0.65) inset,
-      0 4px 18px rgba(80, 40, 60, 0.22);
-    border-width: 1.5px;
-  }
-
-  .bill-count-pill__value {
-    font-size: 1.65rem;
-  }
-
-  .bill-count-pill__label {
-    font-size: 0.68rem;
-  }
 }

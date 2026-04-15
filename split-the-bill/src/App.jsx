@@ -537,7 +537,6 @@ export default function App() {
         className="bill-panel bill-panel--items"
         aria-labelledby="items-heading"
       >
-        <div className="bill-items-inner">
         <h2 id="items-heading">
           Items
           <span className="sr-only">
@@ -559,7 +558,10 @@ export default function App() {
             rows={3}
             autoComplete="off"
             spellCheck={false}
-            placeholder="12.50, 8, 3.25 — or one price per line"
+            inputMode="decimal"
+            enterKeyHint="done"
+            autoCapitalize="none"
+            placeholder="Separate by space, comma, or newline. Example: 12.50, 8, 3.25"
             value={bulkPricesText}
             onChange={(e) => {
               setBulkPricesText(e.target.value)
@@ -655,20 +657,6 @@ export default function App() {
             </li>
           ))}
         </ul>
-        </div>
-        <aside className="bill-items-pill-rail" aria-hidden="true">
-          <div className="bill-items-pill-rail-track">
-            <span
-              className="bill-count-pill bill-count-pill--rail"
-              title={`${items.length} ${items.length === 1 ? 'item' : 'items'} total`}
-            >
-              <span className="bill-count-pill__value">{items.length}</span>
-              <span className="bill-count-pill__label">
-                {items.length === 1 ? 'item' : 'items'}
-              </span>
-            </span>
-          </div>
-        </aside>
       </section>
 
       <section className="bill-panel" aria-labelledby="tax-tip-heading">
