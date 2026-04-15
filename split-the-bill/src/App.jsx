@@ -87,7 +87,6 @@ export default function App() {
   const [bulkAddError, setBulkAddError] = useState('')
   const [celebrateReady, setCelebrateReady] = useState(false)
   const [copyStatus, setCopyStatus] = useState('')
-  const [orderStamp, setOrderStamp] = useState(false)
   const [checkAnimKey, setCheckAnimKey] = useState(0)
   const [people, setPeople] = useState(() => [
     { id: uid(), name: '' },
@@ -274,6 +273,7 @@ export default function App() {
 
   const shareReadyPrevRef = useRef(false)
   const celebrateTimerRef = useRef(null)
+  const bulkPricesInputRef = useRef(null)
 
   function addPerson() {
     setPeople((prev) => [...prev, { id: uid(), name: '' }])
@@ -380,9 +380,7 @@ export default function App() {
     }))
     setItems((prev) => [...prev, ...next])
     setBulkPricesText('')
-
-    setOrderStamp(true)
-    window.setTimeout(() => setOrderStamp(false), 700)
+    requestAnimationFrame(() => bulkPricesInputRef.current?.focus())
   }
 
   async function copyShareToClipboard() {
@@ -537,13 +535,11 @@ export default function App() {
         className="bill-panel bill-panel--items"
         aria-labelledby="items-heading"
       >
-        <h2 id="items-heading">
-          Items
-          <span className="sr-only">
-            {' '}
-            ({items.length} {items.length === 1 ? 'item' : 'items'})
+        <h2 id="items-heading" className="bill-items-heading">
+          <span className="bill-items-heading__title">Items</span>
+          <span className="bill-items-heading__count">
+            {items.length} {items.length === 1 ? 'item' : 'items'}
           </span>
-          {orderStamp ? <span className="bill-stamp">ORDER IN</span> : null}
         </h2>
         <p className="bill-muted bill-items-lede">
           Add prices to create items, then assign who ate or shared each one.
@@ -554,6 +550,7 @@ export default function App() {
           </label>
           <textarea
             id="bulk-prices-input"
+            ref={bulkPricesInputRef}
             className="bill-input bill-textarea-bulk"
             rows={3}
             autoComplete="off"
@@ -561,7 +558,7 @@ export default function App() {
             inputMode="decimal"
             enterKeyHint="done"
             autoCapitalize="none"
-            placeholder="Separate by space, comma, or newline. Example: 12.50, 8, 3.25"
+            placeholder="Type a price, then tap Create. Repeat. (Example: 12.50)"
             value={bulkPricesText}
             onChange={(e) => {
               setBulkPricesText(e.target.value)
@@ -574,6 +571,10 @@ export default function App() {
               }
             }}
           />
+          <p className="bill-hint bill-bulk-desktop-note">
+            On desktop, you can enter multiple prices at once (separated by space, comma, or
+            newline).
+          </p>
           <div className="bill-row bill-row--bulk-actions">
             <button
               type="button"

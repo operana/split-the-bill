@@ -202,6 +202,22 @@ html, body {
   letter-spacing: 0.02em;
 }
 
+.bill-items-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+
+.bill-items-heading__count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}
+
 .bill-stamp {
   display: inline-flex;
   align-items: center;
@@ -534,6 +550,16 @@ html, body {
 
 .bill-row--bulk-actions {
   align-items: center;
+}
+
+.bill-bulk-desktop-note {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .bill-bulk-desktop-note {
+    display: none;
+  }
 }
 
 .bill-share--ready {
