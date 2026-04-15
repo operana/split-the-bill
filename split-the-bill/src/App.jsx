@@ -483,10 +483,7 @@ export default function App() {
             onChange={(e) => setRestaurantTitle(e.target.value)}
           />
         </div>
-        <p className="bill-lede">
-          Add people and line items, assign who ate or shared each item, then review
-          tax, optional surcharge, and tip per person. ☺︎ 
-        </p>
+        <p className="bill-lede" aria-hidden="true" />
       </header>
 
       <div className="bill-category-rail" aria-hidden="true">
@@ -570,7 +567,14 @@ export default function App() {
             <button
               type="button"
               className="bill-btn bill-btn-primary"
-              onClick={withSparkle(createNewItem)}
+              onPointerDown={(e) => {
+                // Keep the price input focused so iOS doesn't dismiss the decimal keypad.
+                e.preventDefault()
+              }}
+              onClick={withSparkle(() => {
+                createNewItem()
+                requestAnimationFrame(() => newItemPriceRef.current?.focus())
+              })}
               disabled={String(newItemPrice).trim().length === 0 || newItemAssigneeIds.length === 0}
             >
               Create item
@@ -578,17 +582,28 @@ export default function App() {
           </div>
 
           <fieldset className="bill-assign bill-assign--new">
-            <legend>Who shared this item?</legend>
+            <legend>Who had this item?</legend>
             <div className="bill-chips">
               {people.map((p, i) => {
                 const checked = newItemAssigneeIds.includes(p.id)
                 const label = p.name.trim() || `Person ${i + 1}`
                 return (
-                  <label key={p.id} className="bill-chip">
+                  <label
+                    key={p.id}
+                    className="bill-chip"
+                    onPointerDown={(e) => {
+                      // Prevent focus from leaving the price input (keeps keypad open on iOS).
+                      e.preventDefault()
+                    }}
+                    onClick={() => {
+                      toggleNewItemAssignee(p.id)
+                      requestAnimationFrame(() => newItemPriceRef.current?.focus())
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() => toggleNewItemAssignee(p.id)}
+                      onChange={() => {}}
                     />
                     <span>{label}</span>
                   </label>
