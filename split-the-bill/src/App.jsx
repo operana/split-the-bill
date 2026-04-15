@@ -87,6 +87,8 @@ export default function App() {
   const [bulkAddError, setBulkAddError] = useState('')
   const [celebrateReady, setCelebrateReady] = useState(false)
   const [copyStatus, setCopyStatus] = useState('')
+  const [orderStamp, setOrderStamp] = useState(false)
+  const [checkAnimKey, setCheckAnimKey] = useState(0)
   const [people, setPeople] = useState(() => [
     { id: uid(), name: '' },
     { id: uid(), name: '' },
@@ -378,6 +380,9 @@ export default function App() {
     }))
     setItems((prev) => [...prev, ...next])
     setBulkPricesText('')
+
+    setOrderStamp(true)
+    window.setTimeout(() => setOrderStamp(false), 700)
   }
 
   async function copyShareToClipboard() {
@@ -431,6 +436,7 @@ export default function App() {
   function resetAll() {
     if (!window.confirm('Are you sure you want to reset?')) return
     setRestaurantTitle('')
+    setCheckAnimKey((k) => k + 1)
     setPeople([
       { id: uid(), name: '' },
       { id: uid(), name: '' },
@@ -459,7 +465,9 @@ export default function App() {
           </span>
           <span>
             Check #{' '}
-            <strong className="bill-check-number">{checkNumber}</strong>
+            <strong key={checkAnimKey} className="bill-check-number bill-check-number-animate">
+              {checkNumber}
+            </strong>
           </span>
         </div>
         <div className="bill-header-top">
@@ -531,6 +539,7 @@ export default function App() {
       >
         <h2 id="items-heading">
           Items <span className="bill-count-pill">{items.length}</span>
+          {orderStamp ? <span className="bill-stamp">ORDER IN</span> : null}
         </h2>
         <p className="bill-muted bill-items-lede">
           Add prices to create items, then assign who ate or shared each one.
