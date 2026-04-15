@@ -83,11 +83,12 @@ function round2(n) {
 export default function App() {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [restaurantTitle, setRestaurantTitle] = useState('')
-  const [bulkPricesText, setBulkPricesText] = useState('')
-  const [bulkAddError, setBulkAddError] = useState('')
   const [celebrateReady, setCelebrateReady] = useState(false)
   const [copyStatus, setCopyStatus] = useState('')
   const [checkAnimKey, setCheckAnimKey] = useState(0)
+  const [newItemPrice, setNewItemPrice] = useState('')
+  const [newItemAssigneeIds, setNewItemAssigneeIds] = useState(() => [])
+  const [newItemError, setNewItemError] = useState('')
   const [people, setPeople] = useState(() => [
     { id: uid(), name: '' },
     { id: uid(), name: '' },
@@ -273,7 +274,7 @@ export default function App() {
 
   const shareReadyPrevRef = useRef(false)
   const celebrateTimerRef = useRef(null)
-  const bulkPricesInputRef = useRef(null)
+  const newItemPriceRef = useRef(null)
 
   function addPerson() {
     setPeople((prev) => [...prev, { id: uid(), name: '' }])
@@ -293,25 +294,39 @@ export default function App() {
     setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)))
   }
 
-  function parseBulkPrices(text) {
-    const tokens = String(text)
-      .replace(/\r\n/g, '\n')
-      .split(/[\s,]+/g)
-      .map((t) => t.trim())
-      .filter(Boolean)
-
-    const prices = []
-    for (const tok of tokens) {
-      const n = round2(parseMoney(tok))
-      if (!Number.isFinite(n)) continue
-      // Keep even 0.00 if user explicitly entered it.
-      if (n === 0 && !/0/.test(tok)) continue
-      prices.push(n.toFixed(2))
-    }
-    return prices
+  function toggleNewItemAssignee(personId) {
+    setNewItemAssigneeIds((prev) =>
+      prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId],
+    )
   }
 
-  const bulkParsedPrices = useMemo(() => parseBulkPrices(bulkPricesText), [bulkPricesText])
+  function createNewItem() {
+    const raw = String(newItemPrice ?? '').trim()
+    const n = round2(parseMoney(raw))
+
+    if (!Number.isFinite(n) || (n === 0 && !/0/.test(raw))) {
+      setNewItemError('Enter a valid price.')
+      return
+    }
+    if (newItemAssigneeIds.length === 0) {
+      setNewItemError('Select at least one person.')
+      return
+    }
+
+    setNewItemError('')
+    setItems((prev) => [
+      ...prev,
+      {
+        id: uid(),
+        label: '',
+        price: n.toFixed(2),
+        assigneeIds: newItemAssigneeIds,
+      },
+    ])
+
+    setNewItemPrice('')
+    requestAnimationFrame(() => newItemPriceRef.current?.focus())
+  }
 
   const billProgress = useMemo(() => {
     const peopleAdded = people.length > 0
@@ -362,26 +377,6 @@ export default function App() {
       if (celebrateTimerRef.current) window.clearTimeout(celebrateTimerRef.current)
     }
   }, [billProgress.readyToShare])
-
-  function addItemsFromBulk() {
-    const prices = parseBulkPrices(bulkPricesText)
-
-    if (prices.length === 0) {
-      setBulkAddError('Enter at least one price.')
-      return
-    }
-
-    setBulkAddError('')
-    const next = prices.map((p) => ({
-      id: uid(),
-      label: '',
-      price: p,
-      assigneeIds: [],
-    }))
-    setItems((prev) => [...prev, ...next])
-    setBulkPricesText('')
-    requestAnimationFrame(() => bulkPricesInputRef.current?.focus())
-  }
 
   async function copyShareToClipboard() {
     try {
@@ -544,53 +539,69 @@ export default function App() {
         <p className="bill-muted bill-items-lede">
           Add prices to create items, then assign who ate or shared each one.
         </p>
-        <div className="bill-bulk-add" style={{ marginTop: 10 }}>
-          <label htmlFor="bulk-prices-input" className="sr-only">
-            Prices to add as items
-          </label>
-          <textarea
-            id="bulk-prices-input"
-            ref={bulkPricesInputRef}
-            className="bill-input bill-textarea-bulk"
-            rows={3}
-            autoComplete="off"
-            spellCheck={false}
-            inputMode="decimal"
-            enterKeyHint="done"
-            autoCapitalize="none"
-            placeholder="Type a price, then tap Create. Repeat. (Example: 12.50)"
-            value={bulkPricesText}
-            onChange={(e) => {
-              setBulkPricesText(e.target.value)
-              if (bulkAddError) setBulkAddError('')
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault()
-                if (bulkParsedPrices.length > 0) addItemsFromBulk()
-              }
-            }}
-          />
-          <p className="bill-hint bill-bulk-desktop-note">
-            On desktop, you can enter multiple prices at once (separated by space, comma, or
-            newline).
-          </p>
-          <div className="bill-row bill-row--bulk-actions">
+        <div className="bill-new-item" style={{ marginTop: 10 }}>
+          <div className="bill-row bill-new-item__top">
+            <label className="sr-only" htmlFor="new-item-price">
+              New item price
+            </label>
+            <input
+              id="new-item-price"
+              ref={newItemPriceRef}
+              className="bill-input bill-input-money"
+              type="text"
+              inputMode="decimal"
+              enterKeyHint="done"
+              autoCapitalize="none"
+              placeholder="0.00"
+              value={newItemPrice}
+              onChange={(e) => {
+                setNewItemPrice(e.target.value)
+                if (newItemError) setNewItemError('')
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  createNewItem()
+                }
+              }}
+            />
+
             <button
               type="button"
               className="bill-btn bill-btn-primary"
-              onClick={withSparkle(addItemsFromBulk)}
-              disabled={bulkParsedPrices.length === 0}
+              onClick={withSparkle(createNewItem)}
+              disabled={String(newItemPrice).trim().length === 0 || newItemAssigneeIds.length === 0}
             >
-              Create {bulkParsedPrices.length || ''} item{bulkParsedPrices.length === 1 ? '' : 's'}
+              Create item
             </button>
           </div>
+
+          <fieldset className="bill-assign bill-assign--new">
+            <legend>Who shared this item?</legend>
+            <div className="bill-chips">
+              {people.map((p, i) => {
+                const checked = newItemAssigneeIds.includes(p.id)
+                const label = p.name.trim() || `Person ${i + 1}`
+                return (
+                  <label key={p.id} className="bill-chip">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleNewItemAssignee(p.id)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </fieldset>
+
+          {newItemError ? (
+            <p className="bill-warn" role="status" style={{ marginTop: 8 }}>
+              {newItemError}
+            </p>
+          ) : null}
         </div>
-        {bulkAddError ? (
-          <p className="bill-warn" role="status" style={{ marginTop: 8 }}>
-            {bulkAddError}
-          </p>
-        ) : null}
         {items.length === 0 ? (
           <p className="bill-muted bill-items-empty-callout">
             No items yet. Add a price to get started.

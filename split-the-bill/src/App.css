@@ -534,32 +534,36 @@ html, body {
   background: var(--butter-soft);
 }
 
-.bill-bulk-add {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.bill-new-item {
+  border: 1px solid rgba(232, 184, 200, 0.85);
+  border-radius: 6px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 
-.bill-textarea-bulk {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 4.5rem;
-  resize: vertical;
-  line-height: 1.45;
-}
-
-.bill-row--bulk-actions {
+.bill-new-item__top {
   align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-.bill-bulk-desktop-note {
-  margin: 0;
+.bill-new-item__top .bill-btn {
+  min-height: 40px;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
-@media (max-width: 600px) {
-  .bill-bulk-desktop-note {
-    display: none;
-  }
+.bill-new-item__top .bill-input-money {
+  width: 8rem;
+}
+
+.bill-assign--new {
+  margin-top: 2px;
+}
+
+.bill-assign--new legend {
+  font-weight: 600;
 }
 
 .bill-share--ready {
