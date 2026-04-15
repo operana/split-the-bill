@@ -548,6 +548,8 @@ export default function App() {
           <input
             className="bill-input bill-input-grow"
             type="text"
+            inputMode="decimal"
+            enterKeyHint="done"
             placeholder="Type all prices (space/comma to separate). Example: 12.50, 8, 3.25"
             value={bulkPricesText}
             onChange={(e) => {
