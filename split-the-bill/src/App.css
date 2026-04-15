@@ -527,8 +527,34 @@ html, body {
   background: var(--butter-soft);
 }
 
+.bill-row--bulk-main {
+  align-items: stretch;
+}
+
+.bill-bulk-delims {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.bill-bulk-delims-label {
+  font-size: 0.85rem;
+  color: var(--text);
+  opacity: 0.78;
+  margin-right: 2px;
+}
+
+.bill-btn-delim {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  border-radius: 999px;
+}
+
 .bill-bulk-hint {
   margin: -4px 0 10px;
+  max-width: 52ch;
 }
 
 
