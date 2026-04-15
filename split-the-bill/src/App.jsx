@@ -591,11 +591,9 @@ export default function App() {
                   <label
                     key={p.id}
                     className="bill-chip"
-                    onPointerDown={(e) => {
-                      // Prevent focus from leaving the price input (keeps keypad open on iOS).
-                      e.preventDefault()
-                    }}
-                    onClick={() => {
+                    onClick={(e) => {
+                      // If the checkbox itself was clicked, its onChange will handle toggling.
+                      if (e.target && e.target.tagName === 'INPUT') return
                       toggleNewItemAssignee(p.id)
                       requestAnimationFrame(() => newItemPriceRef.current?.focus())
                     }}
@@ -603,7 +601,14 @@ export default function App() {
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() => {}}
+                      onPointerDown={(e) => {
+                        // Keep the price input focused so iOS doesn't dismiss the decimal keypad.
+                        e.preventDefault()
+                      }}
+                      onChange={() => {
+                        toggleNewItemAssignee(p.id)
+                        requestAnimationFrame(() => newItemPriceRef.current?.focus())
+                      }}
                     />
                     <span>{label}</span>
                   </label>
