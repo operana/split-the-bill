@@ -325,6 +325,7 @@ export default function App() {
     ])
 
     setNewItemPrice('')
+    setNewItemAssigneeIds([])
     requestAnimationFrame(() => newItemPriceRef.current?.focus())
   }
 
