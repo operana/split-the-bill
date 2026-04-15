@@ -274,37 +274,6 @@ export default function App() {
 
   const shareReadyPrevRef = useRef(false)
   const celebrateTimerRef = useRef(null)
-  const bulkPricesInputRef = useRef(null)
-
-  function insertBulkDelimiter(insertion) {
-    const el = bulkPricesInputRef.current
-    let next
-    let caret
-
-    if (el && typeof el.selectionStart === 'number' && typeof el.selectionEnd === 'number') {
-      const start = el.selectionStart
-      const end = el.selectionEnd
-      next = bulkPricesText.slice(0, start) + insertion + bulkPricesText.slice(end)
-      caret = start + insertion.length
-    } else {
-      next = bulkPricesText + insertion
-      caret = next.length
-    }
-
-    setBulkPricesText(next)
-    if (bulkAddError) setBulkAddError('')
-
-    requestAnimationFrame(() => {
-      const input = bulkPricesInputRef.current
-      if (!input) return
-      input.focus()
-      try {
-        input.setSelectionRange(caret, caret)
-      } catch {
-        /* ignore invalid range */
-      }
-    })
-  }
 
   function addPerson() {
     setPeople((prev) => [...prev, { id: uid(), name: '' }])
@@ -568,30 +537,42 @@ export default function App() {
         className="bill-panel bill-panel--items"
         aria-labelledby="items-heading"
       >
+        <div className="bill-items-inner">
         <h2 id="items-heading">
-          Items <span className="bill-count-pill">{items.length}</span>
+          Items
+          <span className="sr-only">
+            {' '}
+            ({items.length} {items.length === 1 ? 'item' : 'items'})
+          </span>
           {orderStamp ? <span className="bill-stamp">ORDER IN</span> : null}
         </h2>
         <p className="bill-muted bill-items-lede">
           Add prices to create items, then assign who ate or shared each one.
         </p>
-        <div style={{ marginTop: 10 }}>
-          <div className="bill-row bill-row--bulk-main" style={{ marginBottom: 8 }}>
-            <input
-              ref={bulkPricesInputRef}
-              id="bulk-prices-input"
-              className="bill-input bill-input-grow"
-              type="text"
-              inputMode="decimal"
-              enterKeyHint="done"
-              aria-describedby="bulk-prices-hint"
-              placeholder="Enter prices (e.g. 12.50). Tap Comma or Space between prices, or paste a list."
-              value={bulkPricesText}
-              onChange={(e) => {
-                setBulkPricesText(e.target.value)
-                if (bulkAddError) setBulkAddError('')
-              }}
-            />
+        <div className="bill-bulk-add" style={{ marginTop: 10 }}>
+          <label htmlFor="bulk-prices-input" className="sr-only">
+            Prices to add as items
+          </label>
+          <textarea
+            id="bulk-prices-input"
+            className="bill-input bill-textarea-bulk"
+            rows={3}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="12.50, 8, 3.25 — or one price per line"
+            value={bulkPricesText}
+            onChange={(e) => {
+              setBulkPricesText(e.target.value)
+              if (bulkAddError) setBulkAddError('')
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                if (bulkParsedPrices.length > 0) addItemsFromBulk()
+              }
+            }}
+          />
+          <div className="bill-row bill-row--bulk-actions">
             <button
               type="button"
               className="bill-btn bill-btn-primary"
@@ -601,41 +582,16 @@ export default function App() {
               Create {bulkParsedPrices.length || ''} item{bulkParsedPrices.length === 1 ? '' : 's'}
             </button>
           </div>
-          <div
-            className="bill-bulk-delims"
-            role="group"
-            aria-label="Insert between prices"
-          >
-            <span className="bill-bulk-delims-label">Between prices</span>
-            <button
-              type="button"
-              className="bill-btn bill-btn-ghost bill-btn-delim"
-              onClick={() => insertBulkDelimiter(', ')}
-            >
-              Comma
-            </button>
-            <button
-              type="button"
-              className="bill-btn bill-btn-ghost bill-btn-delim"
-              onClick={() => insertBulkDelimiter(' ')}
-            >
-              Space
-            </button>
-          </div>
         </div>
-        <p id="bulk-prices-hint" className="bill-muted bill-bulk-hint">
-          On a phone number pad, use Comma or Space to separate prices. You can also paste from
-          Notes (commas or line breaks work). Detected <strong>{bulkParsedPrices.length}</strong>{' '}
-          price
-          {bulkParsedPrices.length === 1 ? '' : 's'}.
-        </p>
         {bulkAddError ? (
-          <p className="bill-warn" role="status" style={{ marginTop: -6 }}>
+          <p className="bill-warn" role="status" style={{ marginTop: 8 }}>
             {bulkAddError}
           </p>
         ) : null}
         {items.length === 0 ? (
-          <p className="bill-muted">No items yet. Add a price to get started.</p>
+          <p className="bill-muted bill-items-empty-callout">
+            No items yet. Add a price to get started.
+          </p>
         ) : null}
         <ul className="bill-items">
           {items.map((it) => (
@@ -699,6 +655,20 @@ export default function App() {
             </li>
           ))}
         </ul>
+        </div>
+        <aside className="bill-items-pill-rail" aria-hidden="true">
+          <div className="bill-items-pill-rail-track">
+            <span
+              className="bill-count-pill bill-count-pill--rail"
+              title={`${items.length} ${items.length === 1 ? 'item' : 'items'} total`}
+            >
+              <span className="bill-count-pill__value">{items.length}</span>
+              <span className="bill-count-pill__label">
+                {items.length === 1 ? 'item' : 'items'}
+              </span>
+            </span>
+          </div>
+        </aside>
       </section>
 
       <section className="bill-panel" aria-labelledby="tax-tip-heading">
