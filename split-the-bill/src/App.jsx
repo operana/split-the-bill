@@ -588,30 +588,23 @@ export default function App() {
                 const checked = newItemAssigneeIds.includes(p.id)
                 const label = p.name.trim() || `Person ${i + 1}`
                 return (
-                  <label
+                  <button
                     key={p.id}
+                    type="button"
                     className="bill-chip"
-                    onClick={(e) => {
-                      // If the checkbox itself was clicked, its onChange will handle toggling.
-                      if (e.target && e.target.tagName === 'INPUT') return
+                    role="checkbox"
+                    aria-checked={checked}
+                    onMouseDown={(e) => {
+                      // Avoid moving focus off the price input on desktop.
+                      e.preventDefault()
+                    }}
+                    onClick={() => {
                       toggleNewItemAssignee(p.id)
                       requestAnimationFrame(() => newItemPriceRef.current?.focus())
                     }}
                   >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onPointerDown={(e) => {
-                        // Keep the price input focused so iOS doesn't dismiss the decimal keypad.
-                        e.preventDefault()
-                      }}
-                      onChange={() => {
-                        toggleNewItemAssignee(p.id)
-                        requestAnimationFrame(() => newItemPriceRef.current?.focus())
-                      }}
-                    />
                     <span>{label}</span>
-                  </label>
+                  </button>
                 )
               })}
             </div>
