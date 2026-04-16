@@ -555,7 +555,7 @@ export default function App() {
             id="restaurant-title"
             className="bill-input bill-input-grow"
             type="text"
-            placeholder="Restaurant title (optional)"
+            placeholder="Restaurant or occasion (optional)"
             value={restaurantTitle}
             onChange={(e) => setRestaurantTitle(e.target.value)}
           />
