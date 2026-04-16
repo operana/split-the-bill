@@ -93,6 +93,7 @@ export default function App() {
   const [celebrateReady, setCelebrateReady] = useState(false)
   const [copyStatus, setCopyStatus] = useState('')
   const [checkAnimKey, setCheckAnimKey] = useState(0)
+  const [receiptFooterLine, setReceiptFooterLine] = useState(() => 'Thank you · Please come again ☺ - Leah')
   const [newItemPrice, setNewItemPrice] = useState('')
   const [newItemAssigneeIds, setNewItemAssigneeIds] = useState(() => [])
   const [newItemError, setNewItemError] = useState('')
@@ -221,6 +222,30 @@ export default function App() {
     return () => {
       if (mq.removeEventListener) mq.removeEventListener('change', apply)
       else mq.removeListener(apply)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/one-liners.txt', { cache: 'no-store' })
+        if (!res.ok) return
+        const text = await res.text()
+        const lines = text
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter((l) => l && !l.startsWith('#'))
+
+        if (!lines.length) return
+        const idx = Math.floor(Math.random() * lines.length)
+        if (!cancelled) setReceiptFooterLine(lines[idx])
+      } catch {
+        // ignore (keep default footer line)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -522,52 +547,6 @@ export default function App() {
 
   return (
     <div className="bill-app bill-receipt">
-      <div className="bill-appbar" role="presentation">
-        <div className="bill-appbar__inner">
-          <div className="bill-appbar__row">
-            <div className="bill-appbar__title">Split the bill</div>
-            <nav className="bill-stepper" aria-label="Steps">
-              {STEPS.map((s) => {
-                const isCurrent = s.id === currentStep
-                const done =
-                  s.id === 'people'
-                    ? stepStatus.peopleDone
-                    : s.id === 'items'
-                      ? stepStatus.itemsDone
-                      : s.id === 'tax'
-                        ? stepStatus.taxDone
-                        : stepStatus.summaryDone
-
-                const cls = isCurrent
-                  ? 'bill-step bill-step--current'
-                  : done
-                    ? 'bill-step bill-step--done'
-                    : 'bill-step'
-
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={cls}
-                    onClick={() => goToStep(s.id)}
-                    aria-current={isCurrent ? 'step' : undefined}
-                  >
-                    {s.label}
-                  </button>
-                )
-              })}
-            </nav>
-            <button
-              type="button"
-              className="bill-btn bill-btn-ghost bill-appbar__action"
-              onClick={withSparkle(resetAll)}
-            >
-              Start Over
-            </button>
-          </div>
-        </div>
-      </div>
-
       <header className="bill-header bill-receipt-header">
         <p className="bill-receipt-kicker">Guest check</p>
         <div className="bill-receipt-meta">
@@ -606,6 +585,38 @@ export default function App() {
             onChange={(e) => setRestaurantTitle(e.target.value)}
           />
         </div>
+
+        <nav className="bill-stepper" aria-label="Steps">
+          {STEPS.map((s) => {
+            const isCurrent = s.id === currentStep
+            const done =
+              s.id === 'people'
+                ? stepStatus.peopleDone
+                : s.id === 'items'
+                  ? stepStatus.itemsDone
+                  : s.id === 'tax'
+                    ? stepStatus.taxDone
+                    : stepStatus.summaryDone
+
+            const cls = isCurrent
+              ? 'bill-step bill-step--current'
+              : done
+                ? 'bill-step bill-step--done'
+                : 'bill-step'
+
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={cls}
+                onClick={() => goToStep(s.id)}
+                aria-current={isCurrent ? 'step' : undefined}
+              >
+                {s.label}
+              </button>
+            )
+          })}
+        </nav>
         <p className="bill-lede" aria-hidden="true" />
       </header>
 
@@ -1055,13 +1066,7 @@ export default function App() {
       ) : null}
 
       <footer className="bill-receipt-footer">
-        <p>
-          Thank you · Please come again{' '}
-          <span className="bill-receipt-smile" aria-hidden="true">
-            ☺
-          </span>
-          - Leah
-        </p>
+        <p>{receiptFooterLine}</p>
       </footer>
     </div>
   )
