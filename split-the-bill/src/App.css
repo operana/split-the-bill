@@ -146,8 +146,13 @@ html, body {
 }
 
 .bill-step--current {
-  border-color: var(--accent-border);
-  background: var(--diner-blue-soft);
+  border-color: rgba(198, 40, 40, 0.55);
+  background: rgba(198, 40, 40, 0.12);
+  color: var(--diner-red);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 10px 18px rgba(198, 40, 40, 0.18),
+    0 2px 8px rgba(80, 40, 60, 0.1);
 }
 
 .bill-step--done {
@@ -218,6 +223,41 @@ html, body {
     linear-gradient(90deg, var(--pink-grid) 1px, transparent 1px);
   background-size: 100% 2rem, 1.75rem 100%;
   background-position: 0 0, 0 0;
+}
+
+/* Quirky, light textures per section (keep subtle + translucent). */
+.bill-panel--people {
+  background-color: rgba(230, 241, 251, 0.55);
+  background-image:
+    radial-gradient(rgba(11, 99, 182, 0.12) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0));
+  background-size: 18px 18px, 100% 100%;
+  background-position: 0 0, 0 0;
+}
+
+.bill-panel--tax {
+  background-color: rgba(255, 231, 163, 0.18);
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.42) 0px,
+      rgba(255, 255, 255, 0.42) 10px,
+      transparent 10px,
+      transparent 22px
+    ),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.65), rgba(255, 253, 248, 0.15));
+  background-size: auto, 100% 100%;
+  background-position: 0 0, 0 0;
+}
+
+.bill-panel--summary {
+  background-color: rgba(255, 228, 235, 0.45);
+  background-image:
+    radial-gradient(rgba(245, 160, 185, 0.22) 1px, transparent 1px),
+    radial-gradient(rgba(11, 99, 182, 0.1) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0));
+  background-size: 20px 20px, 28px 28px, 100% 100%;
+  background-position: 0 0, 10px 12px, 0 0;
 }
 
 .bill-panel h2 {

@@ -596,9 +596,15 @@ export default function App() {
       </nav>
 
       {currentStep === 'people' ? (
-      <section className="bill-panel" aria-labelledby="people-heading">
+      <>
+      <section className="bill-panel bill-panel--people" aria-labelledby="people-heading">
         <div className="bill-panel-heading-row">
-          <h2 id="people-heading">People</h2>
+          <h2 id="people-heading">
+            People{' '}
+            <span className="bill-items-heading__count">
+              {people.length} {people.length === 1 ? 'person' : 'people'}
+            </span>
+          </h2>
           <button type="button" className="bill-btn bill-btn-primary" onClick={withSparkle(addPerson)}>
             Add Another Person
           </button>
@@ -628,11 +634,13 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <StepNav />
       </section>
+      <StepNav />
+      </>
       ) : null}
 
       {currentStep === 'items' ? (
+      <>
       <section
         className="bill-panel bill-panel--items"
         aria-labelledby="items-heading"
@@ -792,12 +800,14 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <StepNav />
       </section>
+      <StepNav />
+      </>
       ) : null}
 
       {currentStep === 'tax' ? (
-      <section className="bill-panel" aria-labelledby="tax-tip-heading">
+      <>
+      <section className="bill-panel bill-panel--tax" aria-labelledby="tax-tip-heading">
         <h2 id="tax-tip-heading">Tax &amp; tip</h2>
         <div className="bill-grid-2">
           <div>
@@ -913,12 +923,14 @@ export default function App() {
             onChange={(e) => setSurchargePercent(e.target.value)}
           />
         </div>
-        <StepNav />
       </section>
+      <StepNav />
+      </>
       ) : null}
 
       {currentStep === 'summary' ? (
-      <section className="bill-panel bill-summary" aria-labelledby="summary-heading">
+      <>
+      <section className="bill-panel bill-summary bill-panel--summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
         <p className="bill-muted bill-summary-meta">
           
@@ -1023,8 +1035,9 @@ export default function App() {
           </div>
           {copyStatus ? <p className="bill-muted bill-copy-status">{copyStatus}</p> : null}
         </div>
-        <StepNav showNext={false} />
       </section>
+      <StepNav showNext={false} />
+      </>
       ) : null}
 
       <footer className="bill-receipt-footer">
