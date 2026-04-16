@@ -14,6 +14,13 @@ const TIP_PRESETS = [15, 18, 20]
 const DEFAULT_TAX = 11.75
 const DEFAULT_SURCHARGE = 0
 
+const STEPS = [
+  { id: 'people', label: 'People' },
+  { id: 'items', label: 'Items' },
+  { id: 'tax', label: 'Tax & tip' },
+  { id: 'summary', label: 'Summary' },
+]
+
 function uid() {
   return crypto.randomUUID()
 }
@@ -99,6 +106,7 @@ export default function App() {
   const [tipMode, setTipMode] = useState('preset')
   const [tipPreset, setTipPreset] = useState(18)
   const [manualTip, setManualTip] = useState('')
+  const [currentStep, setCurrentStep] = useState('people')
 
   const taxRate = parseMoney(taxPercent) / 100
   const surchargeRate = parseMoney(surchargePercent) / 100
@@ -363,6 +371,47 @@ export default function App() {
     return { steps, doneCount, pct, readyToShare, hint }
   }, [people.length, items, totals.unassignedItems])
 
+  const stepStatus = useMemo(() => {
+    const hasNamedPerson = people.some((p) => String(p.name ?? '').trim().length > 0)
+    const peopleDone = people.length > 0 && hasNamedPerson
+
+    const itemsDone =
+      items.length > 0 &&
+      items.every((it) => String(it.price ?? '').trim().length > 0) &&
+      totals.unassignedItems.length === 0
+
+    const taxDone = true
+    const summaryDone = billProgress.readyToShare
+
+    return { peopleDone, itemsDone, taxDone, summaryDone }
+  }, [people, items, totals.unassignedItems.length, billProgress.readyToShare])
+
+  const stepIndex = useMemo(() => STEPS.findIndex((s) => s.id === currentStep), [currentStep])
+  const canGoPrev = stepIndex > 0
+
+  const canGoNext = useMemo(() => {
+    if (currentStep === 'people') return stepStatus.peopleDone
+    if (currentStep === 'items') return stepStatus.itemsDone
+    if (currentStep === 'tax') return stepStatus.taxDone
+    return false
+  }, [currentStep, stepStatus.peopleDone, stepStatus.itemsDone, stepStatus.taxDone])
+
+  function goToStep(stepId) {
+    if (!STEPS.some((s) => s.id === stepId)) return
+    setCurrentStep(stepId)
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }
+
+  function goPrev() {
+    if (!canGoPrev) return
+    goToStep(STEPS[stepIndex - 1].id)
+  }
+
+  function goNext() {
+    if (!canGoNext) return
+    goToStep(STEPS[stepIndex + 1].id)
+  }
+
   useEffect(() => {
     const prev = shareReadyPrevRef.current
     const now = billProgress.readyToShare
@@ -443,6 +492,34 @@ export default function App() {
     setManualTip('')
   }
 
+  function StepNav({ showNext = true }) {
+    return (
+      <div className="bill-step-nav" aria-label="Step navigation">
+        <button
+          type="button"
+          className="bill-btn bill-btn-ghost"
+          onClick={goPrev}
+          disabled={!canGoPrev}
+        >
+          Back
+        </button>
+
+        <div className="bill-step-nav-spacer" />
+
+        {showNext ? (
+          <button
+            type="button"
+            className="bill-btn bill-btn-primary"
+            onClick={goNext}
+            disabled={!canGoNext}
+          >
+            Next
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <div className="bill-app bill-receipt">
       <header className="bill-header bill-receipt-header">
@@ -486,10 +563,39 @@ export default function App() {
         <p className="bill-lede" aria-hidden="true" />
       </header>
 
-      <div className="bill-category-rail" aria-hidden="true">
-        People — Items — Tax &amp; tip — Total
-      </div>
+      <nav className="bill-stepper" aria-label="Steps">
+        {STEPS.map((s) => {
+          const isCurrent = s.id === currentStep
+          const done =
+            s.id === 'people'
+              ? stepStatus.peopleDone
+              : s.id === 'items'
+                ? stepStatus.itemsDone
+                : s.id === 'tax'
+                  ? stepStatus.taxDone
+                  : stepStatus.summaryDone
 
+          const cls = isCurrent
+            ? 'bill-step bill-step--current'
+            : done
+              ? 'bill-step bill-step--done'
+              : 'bill-step'
+
+          return (
+            <button
+              key={s.id}
+              type="button"
+              className={cls}
+              onClick={() => goToStep(s.id)}
+              aria-current={isCurrent ? 'step' : undefined}
+            >
+              {s.label}
+            </button>
+          )
+        })}
+      </nav>
+
+      {currentStep === 'people' ? (
       <section className="bill-panel" aria-labelledby="people-heading">
         <div className="bill-panel-heading-row">
           <h2 id="people-heading">People</h2>
@@ -522,8 +628,11 @@ export default function App() {
             </li>
           ))}
         </ul>
+        <StepNav />
       </section>
+      ) : null}
 
+      {currentStep === 'items' ? (
       <section
         className="bill-panel bill-panel--items"
         aria-labelledby="items-heading"
@@ -683,8 +792,11 @@ export default function App() {
             </li>
           ))}
         </ul>
+        <StepNav />
       </section>
+      ) : null}
 
+      {currentStep === 'tax' ? (
       <section className="bill-panel" aria-labelledby="tax-tip-heading">
         <h2 id="tax-tip-heading">Tax &amp; tip</h2>
         <div className="bill-grid-2">
@@ -801,8 +913,11 @@ export default function App() {
             onChange={(e) => setSurchargePercent(e.target.value)}
           />
         </div>
+        <StepNav />
       </section>
+      ) : null}
 
+      {currentStep === 'summary' ? (
       <section className="bill-panel bill-summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
         <p className="bill-muted bill-summary-meta">
@@ -908,7 +1023,9 @@ export default function App() {
           </div>
           {copyStatus ? <p className="bill-muted bill-copy-status">{copyStatus}</p> : null}
         </div>
+        <StepNav showNext={false} />
       </section>
+      ) : null}
 
       <footer className="bill-receipt-footer">
         <p>

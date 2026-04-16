@@ -113,19 +113,45 @@ html, body {
   letter-spacing: -0.02em;
 }
 
-.bill-category-rail {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  text-align: center;
-  color: var(--diner-blue);
-  background: linear-gradient(180deg, #dbeaf7 0%, #cfe2f3 100%);
-  border-bottom: 2px solid var(--border);
+.bill-stepper {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   padding: 10px 12px;
   margin: 0 -24px 20px;
-  border-left: none;
-  border-right: none;
+  background: linear-gradient(180deg, #dbeaf7 0%, #cfe2f3 100%);
+  border-bottom: 2px solid var(--border);
+}
+
+.bill-step {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 7px 12px;
+  border: 1px solid rgba(13, 92, 156, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--diner-blue);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.bill-step:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(80, 40, 60, 0.12);
+}
+
+.bill-step--current {
+  border-color: var(--accent-border);
+  background: var(--diner-blue-soft);
+}
+
+.bill-step--done {
+  border-color: rgba(21, 101, 192, 0.55);
 }
 
 .bill-receipt-footer {
@@ -339,6 +365,17 @@ html, body {
     background 140ms ease,
     border-color 140ms ease,
     color 140ms ease;
+}
+
+.bill-step-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.bill-step-nav-spacer {
+  flex: 1 1 auto;
 }
 
 .bill-sparkle {
