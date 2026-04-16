@@ -522,6 +522,52 @@ export default function App() {
 
   return (
     <div className="bill-app bill-receipt">
+      <div className="bill-appbar" role="presentation">
+        <div className="bill-appbar__inner">
+          <div className="bill-appbar__row">
+            <div className="bill-appbar__title">Split the bill</div>
+            <nav className="bill-stepper" aria-label="Steps">
+              {STEPS.map((s) => {
+                const isCurrent = s.id === currentStep
+                const done =
+                  s.id === 'people'
+                    ? stepStatus.peopleDone
+                    : s.id === 'items'
+                      ? stepStatus.itemsDone
+                      : s.id === 'tax'
+                        ? stepStatus.taxDone
+                        : stepStatus.summaryDone
+
+                const cls = isCurrent
+                  ? 'bill-step bill-step--current'
+                  : done
+                    ? 'bill-step bill-step--done'
+                    : 'bill-step'
+
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={cls}
+                    onClick={() => goToStep(s.id)}
+                    aria-current={isCurrent ? 'step' : undefined}
+                  >
+                    {s.label}
+                  </button>
+                )
+              })}
+            </nav>
+            <button
+              type="button"
+              className="bill-btn bill-btn-ghost bill-appbar__action"
+              onClick={withSparkle(resetAll)}
+            >
+              Start Over
+            </button>
+          </div>
+        </div>
+      </div>
+
       <header className="bill-header bill-receipt-header">
         <p className="bill-receipt-kicker">Guest check</p>
         <div className="bill-receipt-meta">
@@ -562,38 +608,6 @@ export default function App() {
         </div>
         <p className="bill-lede" aria-hidden="true" />
       </header>
-
-      <nav className="bill-stepper" aria-label="Steps">
-        {STEPS.map((s) => {
-          const isCurrent = s.id === currentStep
-          const done =
-            s.id === 'people'
-              ? stepStatus.peopleDone
-              : s.id === 'items'
-                ? stepStatus.itemsDone
-                : s.id === 'tax'
-                  ? stepStatus.taxDone
-                  : stepStatus.summaryDone
-
-          const cls = isCurrent
-            ? 'bill-step bill-step--current'
-            : done
-              ? 'bill-step bill-step--done'
-              : 'bill-step'
-
-          return (
-            <button
-              key={s.id}
-              type="button"
-              className={cls}
-              onClick={() => goToStep(s.id)}
-              aria-current={isCurrent ? 'step' : undefined}
-            >
-              {s.label}
-            </button>
-          )
-        })}
-      </nav>
 
       {currentStep === 'people' ? (
       <>
