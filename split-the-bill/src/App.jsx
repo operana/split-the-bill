@@ -17,7 +17,7 @@ const DEFAULT_SURCHARGE = 0
 const STEPS = [
   { id: 'people', label: 'People' },
   { id: 'items', label: 'Items' },
-  { id: 'tax', label: 'Tax & tip' },
+  { id: 'tax', label: 'Tax & extras' },
   { id: 'summary', label: 'Summary' },
 ]
 
@@ -55,24 +55,28 @@ function buildShareText({
     const idx = people.findIndex((x) => x.id === r.person.id)
     const name = r.person.name.trim() || `Person ${idx + 1}`
     lines.push(`${name}`)
-    lines.push(`  TOTAL: ${formatMoney(r.total)}`)
+    lines.push(`  TOTAL DUE: ${formatMoney(r.total)}`)
     lines.push(`  Subtotal: ${formatMoney(r.subtotal)}`)
     lines.push(`  Surcharge (${surchargeLabel}%): ${formatMoney(r.surcharge)}`)
     lines.push(`  Tax (${taxLabel}%): ${formatMoney(r.tax)}`)
     lines.push(
       `  Tip${tipMode === 'preset' ? ` (${tipPreset}%)` : ' (manual share)'}: ${formatMoney(r.tip)}`,
     )
+    if ((r.adjustment ?? 0) > 0) lines.push(`  Extras (discount/gift): -${formatMoney(r.adjustment)}`)
 
     lines.push('')
     lines.push('')
   }
 
   lines.push('Receipt (all items)')
-  lines.push(`  Total: ${formatMoney(totals.grand.total)}`)
+  lines.push(`  Total due: ${formatMoney(totals.grand.total)}`)
   lines.push(`  Subtotal: ${formatMoney(totals.grand.subtotal)}`)
   lines.push(`  Surcharge: ${formatMoney(totals.grand.surcharge)}`)
   lines.push(`  Tax: ${formatMoney(totals.grand.tax)}`)
   lines.push(`  Tip: ${formatMoney(totals.grand.tip)}`)
+  if ((totals.grand.discountAmount ?? 0) > 0)
+    lines.push(`  Discount: -${formatMoney(totals.grand.discountAmount)}`)
+  if ((totals.grand.giftCard ?? 0) > 0) lines.push(`  Gift card: -${formatMoney(totals.grand.giftCard)}`)
 
   return lines.join('\n')
 }
@@ -85,6 +89,28 @@ function smsHrefForBody(body) {
 
 function round2(n) {
   return Math.round(n * 100) / 100
+}
+
+function allocateCents(totalDollars, weights) {
+  const totalCents = Math.round(round2(totalDollars) * 100)
+  if (!Number.isFinite(totalCents) || totalCents <= 0) return weights.map(() => 0)
+  const wsum = weights.reduce((s, w) => s + (Number.isFinite(w) && w > 0 ? w : 0), 0)
+  if (wsum <= 0) return weights.map(() => 0)
+
+  const raw = weights.map((w) => (Number.isFinite(w) && w > 0 ? (totalCents * w) / wsum : 0))
+  const base = raw.map((x) => Math.floor(x))
+  let remainder = totalCents - base.reduce((s, c) => s + c, 0)
+
+  const order = raw
+    .map((x, i) => ({ i, frac: x - Math.floor(x) }))
+    .sort((a, b) => b.frac - a.frac)
+
+  for (let k = 0; k < order.length && remainder > 0; k++) {
+    base[order[k].i] += 1
+    remainder -= 1
+  }
+
+  return base.map((c) => c / 100)
 }
 
 export default function App() {
@@ -107,10 +133,13 @@ export default function App() {
   const [tipMode, setTipMode] = useState('preset')
   const [tipPreset, setTipPreset] = useState(18)
   const [manualTip, setManualTip] = useState('')
+  const [discountPercent, setDiscountPercent] = useState('0')
+  const [giftCardAmount, setGiftCardAmount] = useState('')
   const [currentStep, setCurrentStep] = useState('people')
 
   const taxRate = parseMoney(taxPercent) / 100
   const surchargeRate = parseMoney(surchargePercent) / 100
+  const discountRate = parseMoney(discountPercent) / 100
 
   const totals = useMemo(() => {
     const personSubtotals = Object.fromEntries(people.map((p) => [p.id, 0]))
@@ -150,35 +179,73 @@ export default function App() {
       const surcharge = round2(sub * surchargeRate)
       const tax = round2(sub * taxRate)
       const tip = round2(sub * tipPercentEffective)
-      const total = round2(sub + surcharge + tax + tip)
+      const totalBeforeAdjustments = round2(sub + surcharge + tax + tip)
       return {
         person: p,
         subtotal: sub,
         surcharge,
         tax,
         tip,
-        total,
+        totalBeforeAdjustments,
       }
     })
 
+    const subtotal = round2(rows.reduce((s, r) => s + r.subtotal, 0))
+    const surcharge = round2(rows.reduce((s, r) => s + r.surcharge, 0))
+    const tax = round2(rows.reduce((s, r) => s + r.tax, 0))
+    const tip = round2(rows.reduce((s, r) => s + r.tip, 0))
+    const totalBeforeAdjustments = round2(rows.reduce((s, r) => s + r.totalBeforeAdjustments, 0))
+
+    const discountAmount = round2(Math.max(0, Math.min(1, discountRate)) * totalBeforeAdjustments)
+    const giftCard = round2(Math.max(0, parseMoney(giftCardAmount)))
+    const totalAdjustmentsRaw = round2(discountAmount + giftCard)
+    const totalAdjustments = round2(Math.min(totalBeforeAdjustments, totalAdjustmentsRaw))
+
+    const total = round2(Math.max(0, totalBeforeAdjustments - totalAdjustments))
+
+    const weights = rows.map((r) => r.totalBeforeAdjustments)
+    const allocatedAdjustments = allocateCents(
+      totalAdjustments,
+      totalBeforeAdjustments > 0 ? weights : rows.map(() => 0),
+    )
+
+    const rowsWithAdjustments = rows.map((r, i) => {
+      const adjustment = round2(allocatedAdjustments[i] ?? 0)
+      const totalDue = round2(Math.max(0, r.totalBeforeAdjustments - adjustment))
+      return { ...r, adjustment, total: totalDue }
+    })
+
     const grand = {
-      subtotal: round2(rows.reduce((s, r) => s + r.subtotal, 0)),
-      surcharge: round2(rows.reduce((s, r) => s + r.surcharge, 0)),
-      tax: round2(rows.reduce((s, r) => s + r.tax, 0)),
-      tip: round2(rows.reduce((s, r) => s + r.tip, 0)),
-      total: round2(rows.reduce((s, r) => s + r.total, 0)),
+      subtotal,
+      surcharge,
+      tax,
+      tip,
+      discountAmount,
+      giftCard,
+      totalBeforeAdjustments,
+      total,
     }
 
     return {
       personSubtotals,
-      rows,
+      rows: rowsWithAdjustments,
       unassignedItems,
       assignedSubtotalSum,
       tipPercentEffective,
       manualTipPercentDisplay,
       grand,
     }
-  }, [people, items, taxRate, surchargeRate, tipMode, tipPreset, manualTip])
+  }, [
+    people,
+    items,
+    taxRate,
+    surchargeRate,
+    tipMode,
+    tipPreset,
+    manualTip,
+    discountRate,
+    giftCardAmount,
+  ])
 
   const shareText = useMemo(
     () =>
@@ -833,7 +900,7 @@ export default function App() {
       {currentStep === 'tax' ? (
       <>
       <section className="bill-panel bill-panel--tax" aria-labelledby="tax-tip-heading">
-        <h2 id="tax-tip-heading">Tax &amp; tip</h2>
+        <h2 id="tax-tip-heading">Tax &amp; extras</h2>
         <div className="bill-grid-2">
           <div>
             <label className="bill-label" htmlFor="sales-tax">
@@ -948,6 +1015,38 @@ export default function App() {
             onChange={(e) => setSurchargePercent(e.target.value)}
           />
         </div>
+        <div className="bill-grid-2 bill-grid-2--subtract">
+          <div>
+            <label className="bill-label" htmlFor="discount-pct">
+              Discount (% off total)
+            </label>
+            <p className="bill-hint">Optional percent discount applied to total bill.</p>
+            <input
+              id="discount-pct"
+              className="bill-input bill-input-block"
+              type="text"
+              inputMode="decimal"
+              placeholder="0"
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="bill-label" htmlFor="gift-card">
+              Gift card / credit ($ off)
+            </label>
+            <p className="bill-hint">Optional dollar amount subtracted from total bill.</p>
+            <input
+              id="gift-card"
+              className="bill-input bill-input-block"
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={giftCardAmount}
+              onChange={(e) => setGiftCardAmount(e.target.value)}
+            />
+          </div>
+        </div>
       </section>
       <StepNav />
       </>
@@ -992,7 +1091,8 @@ export default function App() {
                   Tip
                   {tipMode === 'preset' ? ` (${tipPreset}%)` : ''}
                 </th>
-                <th scope="col">Total</th>
+                <th scope="col">Extras</th>
+                <th scope="col">Total due</th>
               </tr>
             </thead>
             <tbody>
@@ -1007,6 +1107,9 @@ export default function App() {
                   <td>{formatMoney(r.tax)}</td>
                   <td>{formatMoney(r.tip)}</td>
                   <td>
+                    {r.adjustment > 0 ? `-${formatMoney(r.adjustment)}` : formatMoney(0)}
+                  </td>
+                  <td>
                     <strong>{formatMoney(r.total)}</strong>
                   </td>
                 </tr>
@@ -1019,6 +1122,11 @@ export default function App() {
                 <td>{formatMoney(totals.grand.surcharge)}</td>
                 <td>{formatMoney(totals.grand.tax)}</td>
                 <td>{formatMoney(totals.grand.tip)}</td>
+                <td>
+                  {(totals.grand.discountAmount ?? 0) + (totals.grand.giftCard ?? 0) > 0
+                    ? `-${formatMoney((totals.grand.discountAmount ?? 0) + (totals.grand.giftCard ?? 0))}`
+                    : formatMoney(0)}
+                </td>
                 <td>
                   <strong>{formatMoney(totals.grand.total)}</strong>
                 </td>
