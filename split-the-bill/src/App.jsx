@@ -595,40 +595,9 @@ export default function App() {
         })}
       </nav>
 
-      <nav className="bill-stepper" aria-label="Steps">
-        {STEPS.map((s) => {
-          const isCurrent = s.id === currentStep
-          const done =
-            s.id === 'people'
-              ? stepStatus.peopleDone
-              : s.id === 'items'
-                ? stepStatus.itemsDone
-                : s.id === 'tax'
-                  ? stepStatus.taxDone
-                  : stepStatus.summaryDone
-
-          const cls = isCurrent
-            ? 'bill-step bill-step--current'
-            : done
-              ? 'bill-step bill-step--done'
-              : 'bill-step'
-
-          return (
-            <button
-              key={s.id}
-              type="button"
-              className={cls}
-              onClick={() => goToStep(s.id)}
-              aria-current={isCurrent ? 'step' : undefined}
-            >
-              {s.label}
-            </button>
-          )
-        })}
-      </nav>
-
       {currentStep === 'people' ? (
-      <section className="bill-panel" aria-labelledby="people-heading">
+      <>
+      <section className="bill-panel bill-panel--people" aria-labelledby="people-heading">
         <div className="bill-panel-heading-row">
           <h2 id="people-heading">
             People{' '}
@@ -665,11 +634,13 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <StepNav />
       </section>
+      <StepNav />
+      </>
       ) : null}
 
       {currentStep === 'items' ? (
+      <>
       <section
         className="bill-panel bill-panel--items"
         aria-labelledby="items-heading"
@@ -829,13 +800,14 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <StepNav />
       </section>
+      <StepNav />
+      </>
       ) : null}
 
       {currentStep === 'tax' ? (
-      
-      <section className="bill-panel" aria-labelledby="tax-tip-heading">
+      <>
+      <section className="bill-panel bill-panel--tax" aria-labelledby="tax-tip-heading">
         <h2 id="tax-tip-heading">Tax &amp; tip</h2>
         <div className="bill-grid-2">
           <div>
@@ -951,13 +923,14 @@ export default function App() {
             onChange={(e) => setSurchargePercent(e.target.value)}
           />
         </div>
-        <StepNav />
       </section>
+      <StepNav />
+      </>
       ) : null}
 
       {currentStep === 'summary' ? (
-      
-      <section className="bill-panel bill-summary" aria-labelledby="summary-heading">
+      <>
+      <section className="bill-panel bill-summary bill-panel--summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
         <p className="bill-muted bill-summary-meta">
           
@@ -1062,8 +1035,9 @@ export default function App() {
           </div>
           {copyStatus ? <p className="bill-muted bill-copy-status">{copyStatus}</p> : null}
         </div>
-        <StepNav showNext={false} />
       </section>
+      <StepNav showNext={false} />
+      </>
       ) : null}
 
       <footer className="bill-receipt-footer">
