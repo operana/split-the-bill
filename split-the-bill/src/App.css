@@ -967,10 +967,14 @@ html, body {
   font-family: var(--heading);
 }
 
-.bill-receipt-check__lead {
-  margin: 0 0 14px;
-  max-width: 52ch;
-  line-height: 1.45;
+.bill-receipt-check__subtitle {
+  margin: 0 0 12px;
+  max-width: 48ch;
+  line-height: 1.35;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-h);
+  opacity: 0.78;
 }
 
 .bill-receipt-check__status {

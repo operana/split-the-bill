@@ -1310,7 +1310,7 @@ export default function App() {
             <label className="bill-label" htmlFor="discount-pct">
               Discount (% off total)
             </label>
-            <p className="bill-hint">Optional percent discount applied to total bill.</p>
+            <p className="bill-hint">Optional percent discount applied to total.</p>
             <input
               id="discount-pct"
               className="bill-input bill-input-block"
@@ -1325,7 +1325,7 @@ export default function App() {
             <label className="bill-label" htmlFor="gift-card">
               Gift card / credit ($ off)
             </label>
-            <p className="bill-hint">Optional dollar amount subtracted from total bill.</p>
+            <p className="bill-hint">Optional dollar amount subtracted from total.</p>
             <input
               id="gift-card"
               className="bill-input bill-input-block"
@@ -1349,23 +1349,12 @@ export default function App() {
 
         <div className="bill-receipt-check" aria-labelledby="receipt-check-heading">
           <h3 id="receipt-check-heading" className="bill-receipt-check__title">
-            Receipt check
+            Receipt Check
           </h3>
-          <p className="bill-muted bill-receipt-check__lead">
-            Compare the total below to your printed or card receipt. Some places calculate tip on{' '}
-            <strong>subtotal + tax</strong> instead of food subtotal alone.
+          <p className="bill-receipt-check__subtitle">
+            Compare the calculated total below to your printed receipt.
           </p>
 
-          {receiptVerifyStep === 'try_alt' || receiptVerifyStep === 'manual' ? (
-            <p className="bill-muted bill-receipt-check__surcharge-hint">
-              If the total still doesn&apos;t match, open{' '}
-              <button type="button" className="bill-link-button" onClick={() => goToStep('tax')}>
-                Tax &amp; extras
-              </button>{' '}
-              and confirm whether the surcharge applies to <strong>food subtotal only</strong> or{' '}
-              <strong>subtotal + tax</strong> (before tip).
-            </p>
-          ) : null}
 
           {receiptTotalsMode !== 'default' ? (
             <p className="bill-receipt-check__status">
@@ -1381,7 +1370,7 @@ export default function App() {
           {receiptVerifyStep === 'ask' && receiptTotalsMode === 'default' ? (
             <div className="bill-receipt-check__block">
               <p className="bill-receipt-check__total-line">
-                <span className="bill-receipt-check__label">Total (this app, tax &amp; tip on food subtotal)</span>
+                <span className="bill-receipt-check__label">Total ({tipMode === 'preset' ? `${tipPreset}%` : ''} tip based only on food subtotal)</span>
                 <strong className="bill-receipt-check__amount">{formatMoney(totals.grand.total)}</strong>
               </p>
               <p className="bill-muted bill-receipt-check__question">Is this the correct amount?</p>
@@ -1406,19 +1395,16 @@ export default function App() {
 
           {receiptVerifyStep === 'try_alt' && receiptTotalsMode === 'default' ? (
             <div className="bill-receipt-check__block">
-              <p className="bill-muted bill-receipt-check__note">
-                Many restaurants apply your tip percentage to <strong>subtotal + tax</strong> (per person
-                or on the check). Try this total instead:
-              </p>
               <p className="bill-receipt-check__total-line">
                 <span className="bill-receipt-check__label">
-                  Total (tip % applied to subtotal + tax
-                  {tipMode === 'preset' ? `, ${tipPreset}%` : ''})
+                  Total ({tipMode === 'preset' ? `${tipPreset}%` : ''} tip based on combined subtotal + tax)
                 </span>
                 <strong className="bill-receipt-check__amount">
                   {formatMoney(alternateTipBaseTotals.grand.total)}
                 </strong>
               </p>
+           
+              <p className="bill-muted bill-receipt-check__question">Is this new total correct?</p>
               <div className="bill-receipt-check__actions">
                 <button
                   type="button"
@@ -1428,14 +1414,14 @@ export default function App() {
                     setReceiptVerifyStep('done')
                   }}
                 >
-                  This matches my receipt
+                  Yes, this matches my receipt
                 </button>
                 <button
                   type="button"
                   className="bill-btn bill-btn-ghost"
                   onClick={() => setReceiptVerifyStep('manual')}
                 >
-                  Still not right
+                  No, still not right
                 </button>
                 <button
                   type="button"
@@ -1451,9 +1437,7 @@ export default function App() {
           {receiptVerifyStep === 'manual' && receiptTotalsMode === 'default' ? (
             <div className="bill-receipt-check__block">
               <p className="bill-muted">
-                Enter the <strong>total tax</strong> and <strong>total tip</strong> shown on your receipt.
-                The app will split them across people in proportion to each person’s food subtotal, then
-                recalculate what everyone owes.
+                Enter the <strong>total tax</strong> and <strong>total tip</strong> from your receipt to be proportionately split across people's subtotals.
               </p>
               <div className="bill-receipt-check__manual-grid">
                 <div>
