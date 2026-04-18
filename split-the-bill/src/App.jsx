@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 
 
 
@@ -432,6 +432,23 @@ export default function App() {
       giftCardAmount,
     ],
   )
+
+  const receiptCheckMeterSegments = useMemo(() => {
+    const labels = ['Tip on food', 'Tip on food+tax', 'Enter tax & tip']
+    /** @type {('upcoming' | 'current' | 'complete')[]} */
+    let states = ['upcoming', 'upcoming', 'upcoming']
+    if (receiptTotalsMode === 'manual') {
+      states = ['complete', 'complete', 'complete']
+    } else if (receiptTotalsMode === 'tip_on_subtotal_plus_tax') {
+      states = ['complete', 'complete', 'upcoming']
+    } else if (receiptTotalsMode === 'default') {
+      if (receiptVerifyStep === 'ask') states = ['current', 'upcoming', 'upcoming']
+      else if (receiptVerifyStep === 'try_alt') states = ['complete', 'current', 'upcoming']
+      else if (receiptVerifyStep === 'manual') states = ['complete', 'complete', 'current']
+      else if (receiptVerifyStep === 'done') states = ['complete', 'upcoming', 'upcoming']
+    }
+    return labels.map((label, i) => ({ label, state: states[i] }))
+  }, [receiptTotalsMode, receiptVerifyStep])
 
   const shareText = useMemo(
     () =>
@@ -1351,9 +1368,50 @@ export default function App() {
           <h3 id="receipt-check-heading" className="bill-receipt-check__title">
             Receipt Check
           </h3>
-          <p className="bill-receipt-check__subtitle">
-            Compare the calculated total below to your printed receipt.
-          </p>
+          <nav
+            className="bill-receipt-meter"
+            aria-label="Receipt check path: standard food tip, tip on food plus tax, or manual tax and tip"
+          >
+            <ol className="bill-receipt-meter__list">
+              {receiptCheckMeterSegments.map((seg, i) => (
+                <Fragment key={seg.label}>
+                  <li className="bill-receipt-meter__stepItem">
+                    <button
+                      type="button"
+                      className={`bill-receipt-meter__step bill-receipt-meter__step--${seg.state}`}
+                      aria-current={seg.state === 'current' ? 'step' : undefined}
+                      onClick={() => {
+                        setReceiptTotalsMode('default')
+                        if (i === 0) setReceiptVerifyStep('ask')
+                        else if (i === 1) setReceiptVerifyStep('try_alt')
+                        else setReceiptVerifyStep('manual')
+                      }}
+                    >
+                      <span className="bill-receipt-meter__badge">{i + 1}</span>
+                      <span className="bill-receipt-meter__step-label">{seg.label}</span>
+                    </button>
+                  </li>
+                  {i < receiptCheckMeterSegments.length - 1 ? (
+                    <li className="bill-receipt-meter__feed" aria-hidden="true">
+                      <span className="bill-receipt-meter__feed-line" />
+                      <span className="bill-receipt-meter__feed-arrow">›</span>
+                    </li>
+                  ) : null}
+                </Fragment>
+              ))}
+              <li className="bill-receipt-meter__loop">
+                <button
+                  type="button"
+                  className="bill-receipt-meter__loop-icon"
+                  title="Reset receipt check"
+                  onClick={resetReceiptCheck}
+                  aria-label="Reset receipt check"
+                >
+                  ↻
+                </button>
+              </li>
+            </ol>
+          </nav>
 
 
           {receiptTotalsMode !== 'default' ? (
@@ -1370,10 +1428,17 @@ export default function App() {
           {receiptVerifyStep === 'ask' && receiptTotalsMode === 'default' ? (
             <div className="bill-receipt-check__block">
               <p className="bill-receipt-check__total-line">
-                <span className="bill-receipt-check__label">Total ({tipMode === 'preset' ? `${tipPreset}%` : ''} tip based only on food subtotal)</span>
-                <strong className="bill-receipt-check__amount">{formatMoney(totals.grand.total)}</strong>
+                <span className="bill-receipt-check__total-word">Total</span>
+                <span className="bill-receipt-check__total-figure">
+                  <strong className="bill-receipt-check__amount">{formatMoney(totals.grand.total)}</strong>
+                  <span className="bill-receipt-check__amount-caption">
+                    {tipMode === 'preset'
+                      ? `${tipPreset}% tip on food subtotal only`
+                      : 'Tip split by food subtotal (manual)'}
+                  </span>
+                </span>
               </p>
-              <p className="bill-muted bill-receipt-check__question">Is this the correct amount?</p>
+              <p className="bill-muted bill-receipt-check__question">Is this the correct amount on your receipt?</p>
               <div className="bill-receipt-check__actions">
                 <button
                   type="button"
@@ -1396,15 +1461,20 @@ export default function App() {
           {receiptVerifyStep === 'try_alt' && receiptTotalsMode === 'default' ? (
             <div className="bill-receipt-check__block">
               <p className="bill-receipt-check__total-line">
-                <span className="bill-receipt-check__label">
-                  Total ({tipMode === 'preset' ? `${tipPreset}%` : ''} tip based on combined subtotal + tax)
+                <span className="bill-receipt-check__total-word">Total</span>
+                <span className="bill-receipt-check__total-figure">
+                  <strong className="bill-receipt-check__amount">
+                    {formatMoney(alternateTipBaseTotals.grand.total)}
+                  </strong>
+                  <span className="bill-receipt-check__amount-caption">
+                    {tipMode === 'preset'
+                      ? `${tipPreset}% tip on food + sales tax`
+                      : 'Manual tip split by food + tax'}
+                  </span>
                 </span>
-                <strong className="bill-receipt-check__amount">
-                  {formatMoney(alternateTipBaseTotals.grand.total)}
-                </strong>
               </p>
            
-              <p className="bill-muted bill-receipt-check__question">Is this new total correct?</p>
+              <p className="bill-muted bill-receipt-check__question">How about now?</p>
               <div className="bill-receipt-check__actions">
                 <button
                   type="button"
@@ -1414,7 +1484,7 @@ export default function App() {
                     setReceiptVerifyStep('done')
                   }}
                 >
-                  Yes, this matches my receipt
+                  Yes
                 </button>
                 <button
                   type="button"
