@@ -1413,15 +1413,27 @@ export default function App() {
             </ol>
           </nav>
 
+          {receiptTotalsMode !== 'default' || (receiptVerifyStep === 'done' && receiptTotalsMode === 'default') ? (
+            <div className="bill-receipt-check__utility">
+              {receiptTotalsMode !== 'default' ? (
+                <button type="button" className="bill-link-button" onClick={resetReceiptCheck}>
+                  Review Again
+                </button>
+              ) : null}
+              {receiptVerifyStep === 'done' && receiptTotalsMode === 'default' ? (
+                <button type="button" className="bill-link-button" onClick={() => setReceiptVerifyStep('ask')}>
+                  Review again
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
 
           {receiptTotalsMode !== 'default' ? (
             <p className="bill-receipt-check__status">
               {receiptTotalsMode === 'tip_on_subtotal_plus_tax'
-                ? 'Using tip calculated on each person’s subtotal plus tax (same tip % as above).'
-                : 'Using tax and tip dollar amounts from your receipt, split by food subtotal.'}{' '}
-              <button type="button" className="bill-link-button" onClick={resetReceiptCheck}>
-                Reset receipt check
-              </button>
+                ? 'Using tip calculated on each person’s subtotal plus tax.'
+                : 'Using tax and tip dollar amounts from your receipt, split by food subtotal.'}
             </p>
           ) : null}
 
@@ -1556,10 +1568,7 @@ export default function App() {
 
           {receiptVerifyStep === 'done' && receiptTotalsMode === 'default' ? (
             <p className="bill-muted bill-receipt-check__done">
-              You confirmed this total matches your receipt.{' '}
-              <button type="button" className="bill-link-button" onClick={() => setReceiptVerifyStep('ask')}>
-                Review again
-              </button>
+              You confirmed this total matches your receipt.
             </p>
           ) : null}
         </div>
