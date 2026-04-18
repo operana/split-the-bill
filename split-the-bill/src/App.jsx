@@ -1392,24 +1392,12 @@ export default function App() {
                     </button>
                   </li>
                   {i < receiptCheckMeterSegments.length - 1 ? (
-                    <li className="bill-receipt-meter__feed" aria-hidden="true">
-                      <span className="bill-receipt-meter__feed-line" />
-                      <span className="bill-receipt-meter__feed-arrow">›</span>
+                    <li className="bill-receipt-meter__dot" aria-hidden="true">
+                      ·
                     </li>
                   ) : null}
                 </Fragment>
               ))}
-              <li className="bill-receipt-meter__loop">
-                <button
-                  type="button"
-                  className="bill-receipt-meter__loop-icon"
-                  title="Reset receipt check"
-                  onClick={resetReceiptCheck}
-                  aria-label="Reset receipt check"
-                >
-                  ↻
-                </button>
-              </li>
             </ol>
           </nav>
 
