@@ -1503,7 +1503,7 @@ export default function App() {
                   className="bill-btn bill-btn-ghost"
                   onClick={() => setReceiptVerifyStep('manual')}
                 >
-                  No, still not right
+                  No
                 </button>
                 <button
                   type="button"
