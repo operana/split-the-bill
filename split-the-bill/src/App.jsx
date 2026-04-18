@@ -43,11 +43,16 @@ function buildShareText({
   totals,
   taxPercent,
   surchargePercent,
+  surchargeBasis,
+  surchargeMode,
   tipMode,
   tipPreset,
+  receiptTotalsMode,
 }) {
   const taxLabel = parseMoney(taxPercent).toFixed(2)
   const surchargeLabel = parseMoney(surchargePercent).toFixed(2)
+  const surchargeBasisNote =
+    surchargeBasis === 'subtotal_plus_tax' ? 'subtotal+tax' : 'food subtotal'
   const title = String(restaurantTitle ?? '').trim()
   const lines = [title ? `Split the bill — ${title}` : 'Split the bill — totals', '']
 
@@ -57,10 +62,26 @@ function buildShareText({
     lines.push(`${name}`)
     lines.push(`  TOTAL DUE: ${formatMoney(r.total)}`)
     lines.push(`  Subtotal: ${formatMoney(r.subtotal)}`)
-    lines.push(`  Surcharge (${surchargeLabel}%): ${formatMoney(r.surcharge)}`)
-    lines.push(`  Tax (${taxLabel}%): ${formatMoney(r.tax)}`)
     lines.push(
-      `  Tip${tipMode === 'preset' ? ` (${tipPreset}%)` : ' (manual share)'}: ${formatMoney(r.tip)}`,
+      surchargeMode === 'dollars'
+        ? `  Surcharge (manual, ≈ ${totals.manualSurchargePercentDisplay.toFixed(2)}% of food subtotals): ${formatMoney(r.surcharge)}`
+        : `  Surcharge (${surchargeLabel}% of ${surchargeBasisNote}): ${formatMoney(r.surcharge)}`,
+    )
+    lines.push(
+      receiptTotalsMode === 'manual'
+        ? `  Tax (from receipt split): ${formatMoney(r.tax)}`
+        : `  Tax (${taxLabel}%): ${formatMoney(r.tax)}`,
+    )
+    lines.push(
+      receiptTotalsMode === 'manual'
+        ? `  Tip (from receipt split): ${formatMoney(r.tip)}`
+        : `  Tip${
+            tipMode === 'preset'
+              ? ` (${tipPreset}%)`
+              : receiptTotalsMode === 'tip_on_subtotal_plus_tax'
+                ? ' (manual, weighted by subtotal+tax)'
+                : ' (manual share)'
+          }: ${formatMoney(r.tip)}`,
     )
     if ((r.adjustment ?? 0) > 0) lines.push(`  Extras (discount/gift): -${formatMoney(r.adjustment)}`)
 
@@ -71,12 +92,28 @@ function buildShareText({
   lines.push('Receipt (all items)')
   lines.push(`  Total due: ${formatMoney(totals.grand.total)}`)
   lines.push(`  Subtotal: ${formatMoney(totals.grand.subtotal)}`)
-  lines.push(`  Surcharge: ${formatMoney(totals.grand.surcharge)}`)
+  lines.push(
+    surchargeMode === 'dollars'
+      ? `  Surcharge: ${formatMoney(totals.grand.surcharge)} (total $; ≈ ${totals.manualSurchargePercentDisplay.toFixed(2)}% of assigned food subtotals)`
+      : `  Surcharge: ${formatMoney(totals.grand.surcharge)} (${surchargeLabel}% of ${surchargeBasisNote})`,
+  )
   lines.push(`  Tax: ${formatMoney(totals.grand.tax)}`)
   lines.push(`  Tip: ${formatMoney(totals.grand.tip)}`)
   if ((totals.grand.discountAmount ?? 0) > 0)
     lines.push(`  Discount: -${formatMoney(totals.grand.discountAmount)}`)
   if ((totals.grand.giftCard ?? 0) > 0) lines.push(`  Gift card: -${formatMoney(totals.grand.giftCard)}`)
+
+  if (receiptTotalsMode === 'tip_on_subtotal_plus_tax') {
+    lines.push('')
+    lines.push(
+      'Note: Tip was matched to a receipt that applies the tip percentage to subtotal plus tax (per person).',
+    )
+  } else if (receiptTotalsMode === 'manual') {
+    lines.push('')
+    lines.push(
+      `Note: Tax and tip totals were taken from the receipt (${formatMoney(totals.grand.tax)} tax, ${formatMoney(totals.grand.tip)} tip) and split across people by food subtotal.`,
+    )
+  }
 
   return lines.join('\n')
 }
@@ -113,6 +150,173 @@ function allocateCents(totalDollars, weights) {
   return base.map((c) => c / 100)
 }
 
+/** @typedef {'default' | 'tip_on_subtotal_plus_tax' | 'manual'} ReceiptTotalsMode */
+/** @typedef {'food_subtotal' | 'subtotal_plus_tax'} SurchargeBasis */
+/** @typedef {'percent' | 'dollars'} SurchargeMode */
+
+function computeSplitTotals({
+  people,
+  items,
+  taxRate,
+  surchargeRate,
+  surchargeBasis,
+  surchargeMode,
+  manualSurchargeStr,
+  tipMode,
+  tipPreset,
+  manualTip,
+  discountRate,
+  giftCardAmount,
+  receiptTotalsMode,
+  manualReceiptTaxStr,
+  manualReceiptTipStr,
+}) {
+  const personSubtotals = Object.fromEntries(people.map((p) => [p.id, 0]))
+  const unassignedItems = []
+
+  for (const item of items) {
+    const price = round2(parseMoney(item.price))
+    const assignees = item.assigneeIds.filter((id) => personSubtotals[id] !== undefined)
+    if (assignees.length === 0) {
+      unassignedItems.push(item.id)
+      continue
+    }
+    const share = round2(price / assignees.length)
+    for (const id of assignees) {
+      personSubtotals[id] = round2(personSubtotals[id] + share)
+    }
+  }
+
+  const assignedSubtotalSum = Object.values(personSubtotals).reduce((a, b) => a + b, 0)
+
+  let tipPercentEffective = 0
+  if (tipMode === 'preset') {
+    tipPercentEffective = tipPreset / 100
+  } else {
+    const tipDollars = round2(parseMoney(manualTip))
+    tipPercentEffective =
+      assignedSubtotalSum > 0 ? tipDollars / assignedSubtotalSum : 0
+  }
+
+  const manualTipPercentDisplay =
+    assignedSubtotalSum > 0
+      ? round2((round2(parseMoney(manualTip)) / assignedSubtotalSum) * 100)
+      : 0
+
+  const manualSurchargePercentDisplay =
+    surchargeMode === 'dollars' && assignedSubtotalSum > 0
+      ? round2((round2(parseMoney(manualSurchargeStr)) / assignedSubtotalSum) * 100)
+      : 0
+
+  const subs = people.map((p) => round2(personSubtotals[p.id] ?? 0))
+  const surchargeDollarsTotal = round2(Math.max(0, parseMoney(manualSurchargeStr)))
+  const surchargeAllocDollars =
+    surchargeMode === 'dollars' ? allocateCents(surchargeDollarsTotal, subs) : null
+  const manualReceiptTaxTotal = round2(Math.max(0, parseMoney(manualReceiptTaxStr)))
+  const manualReceiptTipTotal = round2(Math.max(0, parseMoney(manualReceiptTipStr)))
+  const taxAllocManual =
+    receiptTotalsMode === 'manual' ? allocateCents(manualReceiptTaxTotal, subs) : null
+  const tipAllocManual =
+    receiptTotalsMode === 'manual' ? allocateCents(manualReceiptTipTotal, subs) : null
+
+  const rowsBase = people.map((p, i) => {
+    const sub = subs[i] ?? 0
+    const taxRateBased = round2(sub * taxRate)
+    let tax = taxRateBased
+    let tip = 0
+
+    if (receiptTotalsMode === 'manual') {
+      tax = round2(taxAllocManual[i] ?? 0)
+      tip = round2(tipAllocManual[i] ?? 0)
+    } else if (receiptTotalsMode === 'tip_on_subtotal_plus_tax') {
+      tax = taxRateBased
+      if (tipMode === 'preset') {
+        tip = round2((sub + tax) * tipPercentEffective)
+      } else {
+        const tipDollars = round2(parseMoney(manualTip))
+        const weights = people.map((pp, j) => {
+          const s = subs[j] ?? 0
+          const t = round2(s * taxRate)
+          return round2(s + t)
+        })
+        const tipAlloc = allocateCents(tipDollars, weights)
+        tip = round2(tipAlloc[i] ?? 0)
+      }
+    } else {
+      tax = taxRateBased
+      tip = round2(sub * tipPercentEffective)
+    }
+
+    let surcharge = 0
+    if (surchargeMode === 'dollars') {
+      surcharge = round2(surchargeAllocDollars[i] ?? 0)
+    } else {
+      const surchargeBase =
+        surchargeBasis === 'subtotal_plus_tax' ? round2(sub + tax) : sub
+      surcharge = round2(surchargeBase * surchargeRate)
+    }
+
+    const totalBeforeAdjustments = round2(sub + surcharge + tax + tip)
+    return {
+      person: p,
+      subtotal: sub,
+      surcharge,
+      tax,
+      tip,
+      totalBeforeAdjustments,
+    }
+  })
+
+  const subtotal = round2(rowsBase.reduce((s, r) => s + r.subtotal, 0))
+  const surcharge = round2(rowsBase.reduce((s, r) => s + r.surcharge, 0))
+  const tax = round2(rowsBase.reduce((s, r) => s + r.tax, 0))
+  const tip = round2(rowsBase.reduce((s, r) => s + r.tip, 0))
+  const totalBeforeAdjustments = round2(
+    rowsBase.reduce((s, r) => s + r.totalBeforeAdjustments, 0),
+  )
+
+  const discountAmount = round2(Math.max(0, Math.min(1, discountRate)) * totalBeforeAdjustments)
+  const giftCard = round2(Math.max(0, parseMoney(giftCardAmount)))
+  const totalAdjustmentsRaw = round2(discountAmount + giftCard)
+  const totalAdjustments = round2(Math.min(totalBeforeAdjustments, totalAdjustmentsRaw))
+
+  const total = round2(Math.max(0, totalBeforeAdjustments - totalAdjustments))
+
+  const weights = rowsBase.map((r) => r.totalBeforeAdjustments)
+  const allocatedAdjustments = allocateCents(
+    totalAdjustments,
+    totalBeforeAdjustments > 0 ? weights : rowsBase.map(() => 0),
+  )
+
+  const rowsWithAdjustments = rowsBase.map((r, i) => {
+    const adjustment = round2(allocatedAdjustments[i] ?? 0)
+    const totalDue = round2(Math.max(0, r.totalBeforeAdjustments - adjustment))
+    return { ...r, adjustment, total: totalDue }
+  })
+
+  const grand = {
+    subtotal,
+    surcharge,
+    tax,
+    tip,
+    discountAmount,
+    giftCard,
+    totalBeforeAdjustments,
+    total,
+  }
+
+  return {
+    personSubtotals,
+    rows: rowsWithAdjustments,
+    unassignedItems,
+    assignedSubtotalSum,
+    tipPercentEffective,
+    manualTipPercentDisplay,
+    manualSurchargePercentDisplay,
+    grand,
+  }
+}
+
 export default function App() {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [restaurantTitle, setRestaurantTitle] = useState('')
@@ -130,122 +334,104 @@ export default function App() {
   const [items, setItems] = useState(() => [])
   const [taxPercent, setTaxPercent] = useState(String(DEFAULT_TAX))
   const [surchargePercent, setSurchargePercent] = useState(String(DEFAULT_SURCHARGE))
+  const [surchargeBasis, setSurchargeBasis] = useState(
+    /** @type {SurchargeBasis} */ ('food_subtotal'),
+  )
+  const [surchargeMode, setSurchargeMode] = useState(
+    /** @type {SurchargeMode} */ ('percent'),
+  )
+  const [manualSurcharge, setManualSurcharge] = useState('')
   const [tipMode, setTipMode] = useState('preset')
   const [tipPreset, setTipPreset] = useState(18)
   const [manualTip, setManualTip] = useState('')
   const [discountPercent, setDiscountPercent] = useState('0')
   const [giftCardAmount, setGiftCardAmount] = useState('')
   const [currentStep, setCurrentStep] = useState('people')
+  const [receiptTotalsMode, setReceiptTotalsMode] = useState(
+    /** @type {ReceiptTotalsMode} */ ('default'),
+  )
+  const [receiptVerifyStep, setReceiptVerifyStep] = useState(
+    /** @type {'ask' | 'try_alt' | 'manual' | 'done'} */ ('ask'),
+  )
+  const [manualReceiptTax, setManualReceiptTax] = useState('')
+  const [manualReceiptTip, setManualReceiptTip] = useState('')
 
   const taxRate = parseMoney(taxPercent) / 100
   const surchargeRate = parseMoney(surchargePercent) / 100
   const discountRate = parseMoney(discountPercent) / 100
 
-  const totals = useMemo(() => {
-    const personSubtotals = Object.fromEntries(people.map((p) => [p.id, 0]))
-    const unassignedItems = []
+  const totals = useMemo(
+    () =>
+      computeSplitTotals({
+        people,
+        items,
+        taxRate,
+        surchargeRate,
+        surchargeBasis,
+        surchargeMode,
+        manualSurchargeStr: manualSurcharge,
+        tipMode,
+        tipPreset,
+        manualTip,
+        discountRate,
+        giftCardAmount,
+        receiptTotalsMode,
+        manualReceiptTaxStr: manualReceiptTax,
+        manualReceiptTipStr: manualReceiptTip,
+      }),
+    [
+      people,
+      items,
+      taxRate,
+      surchargeRate,
+      surchargeBasis,
+      surchargeMode,
+      manualSurcharge,
+      tipMode,
+      tipPreset,
+      manualTip,
+      discountRate,
+      giftCardAmount,
+      receiptTotalsMode,
+      manualReceiptTax,
+      manualReceiptTip,
+    ],
+  )
 
-    for (const item of items) {
-      const price = round2(parseMoney(item.price))
-      const assignees = item.assigneeIds.filter((id) => personSubtotals[id] !== undefined)
-      if (assignees.length === 0) {
-        unassignedItems.push(item.id)
-        continue
-      }
-      const share = round2(price / assignees.length)
-      for (const id of assignees) {
-        personSubtotals[id] = round2(personSubtotals[id] + share)
-      }
-    }
-
-    const assignedSubtotalSum = Object.values(personSubtotals).reduce((a, b) => a + b, 0)
-
-    let tipPercentEffective = 0
-    if (tipMode === 'preset') {
-      tipPercentEffective = tipPreset / 100
-    } else {
-      const tipDollars = round2(parseMoney(manualTip))
-      tipPercentEffective =
-        assignedSubtotalSum > 0 ? tipDollars / assignedSubtotalSum : 0
-    }
-
-    const manualTipPercentDisplay =
-      assignedSubtotalSum > 0
-        ? round2((round2(parseMoney(manualTip)) / assignedSubtotalSum) * 100)
-        : 0
-
-    const rows = people.map((p) => {
-      const sub = personSubtotals[p.id] ?? 0
-      const surcharge = round2(sub * surchargeRate)
-      const tax = round2(sub * taxRate)
-      const tip = round2(sub * tipPercentEffective)
-      const totalBeforeAdjustments = round2(sub + surcharge + tax + tip)
-      return {
-        person: p,
-        subtotal: sub,
-        surcharge,
-        tax,
-        tip,
-        totalBeforeAdjustments,
-      }
-    })
-
-    const subtotal = round2(rows.reduce((s, r) => s + r.subtotal, 0))
-    const surcharge = round2(rows.reduce((s, r) => s + r.surcharge, 0))
-    const tax = round2(rows.reduce((s, r) => s + r.tax, 0))
-    const tip = round2(rows.reduce((s, r) => s + r.tip, 0))
-    const totalBeforeAdjustments = round2(rows.reduce((s, r) => s + r.totalBeforeAdjustments, 0))
-
-    const discountAmount = round2(Math.max(0, Math.min(1, discountRate)) * totalBeforeAdjustments)
-    const giftCard = round2(Math.max(0, parseMoney(giftCardAmount)))
-    const totalAdjustmentsRaw = round2(discountAmount + giftCard)
-    const totalAdjustments = round2(Math.min(totalBeforeAdjustments, totalAdjustmentsRaw))
-
-    const total = round2(Math.max(0, totalBeforeAdjustments - totalAdjustments))
-
-    const weights = rows.map((r) => r.totalBeforeAdjustments)
-    const allocatedAdjustments = allocateCents(
-      totalAdjustments,
-      totalBeforeAdjustments > 0 ? weights : rows.map(() => 0),
-    )
-
-    const rowsWithAdjustments = rows.map((r, i) => {
-      const adjustment = round2(allocatedAdjustments[i] ?? 0)
-      const totalDue = round2(Math.max(0, r.totalBeforeAdjustments - adjustment))
-      return { ...r, adjustment, total: totalDue }
-    })
-
-    const grand = {
-      subtotal,
-      surcharge,
-      tax,
-      tip,
-      discountAmount,
-      giftCard,
-      totalBeforeAdjustments,
-      total,
-    }
-
-    return {
-      personSubtotals,
-      rows: rowsWithAdjustments,
-      unassignedItems,
-      assignedSubtotalSum,
-      tipPercentEffective,
-      manualTipPercentDisplay,
-      grand,
-    }
-  }, [
-    people,
-    items,
-    taxRate,
-    surchargeRate,
-    tipMode,
-    tipPreset,
-    manualTip,
-    discountRate,
-    giftCardAmount,
-  ])
+  const alternateTipBaseTotals = useMemo(
+    () =>
+      computeSplitTotals({
+        people,
+        items,
+        taxRate,
+        surchargeRate,
+        surchargeBasis,
+        surchargeMode,
+        manualSurchargeStr: manualSurcharge,
+        tipMode,
+        tipPreset,
+        manualTip,
+        discountRate,
+        giftCardAmount,
+        receiptTotalsMode: 'tip_on_subtotal_plus_tax',
+        manualReceiptTaxStr: '',
+        manualReceiptTipStr: '',
+      }),
+    [
+      people,
+      items,
+      taxRate,
+      surchargeRate,
+      surchargeBasis,
+      surchargeMode,
+      manualSurcharge,
+      tipMode,
+      tipPreset,
+      manualTip,
+      discountRate,
+      giftCardAmount,
+    ],
+  )
 
   const shareText = useMemo(
     () =>
@@ -255,10 +441,13 @@ export default function App() {
         totals,
         taxPercent,
         surchargePercent,
+        surchargeBasis,
+        surchargeMode,
         tipMode,
         tipPreset,
+        receiptTotalsMode,
       }),
-    [restaurantTitle, people, totals, taxPercent, surchargePercent, tipMode, tipPreset],
+    [restaurantTitle, people, totals, taxPercent, surchargePercent, surchargeBasis, surchargeMode, tipMode, tipPreset, receiptTotalsMode],
   )
 
   const mailtoHref = useMemo(
@@ -568,6 +757,18 @@ export default function App() {
     )
   }
 
+  function resetReceiptCheck() {
+    setReceiptTotalsMode('default')
+    setReceiptVerifyStep('ask')
+    setManualReceiptTax('')
+    setManualReceiptTip('')
+  }
+
+  function applyManualReceiptAmounts() {
+    setReceiptTotalsMode('manual')
+    setReceiptVerifyStep('done')
+  }
+
   function resetAll() {
     if (!window.confirm('Are you sure you want to reset?')) return
     setRestaurantTitle('')
@@ -579,9 +780,19 @@ export default function App() {
     setItems([])
     setTaxPercent(String(DEFAULT_TAX))
     setSurchargePercent(String(DEFAULT_SURCHARGE))
+    setSurchargeBasis('food_subtotal')
+    setSurchargeMode('percent')
+    setManualSurcharge('')
     setTipMode('preset')
     setTipPreset(18)
     setManualTip('')
+    setDiscountPercent('0')
+    setGiftCardAmount('')
+    setCurrentStep('people')
+    setReceiptTotalsMode('default')
+    setReceiptVerifyStep('ask')
+    setManualReceiptTax('')
+    setManualReceiptTip('')
   }
 
   function StepNav({ showNext = true }) {
@@ -998,22 +1209,101 @@ export default function App() {
           </div>
         </div>
         <div className="bill-surcharge-field">
-          <label className="bill-label" htmlFor="surcharge-pct">
-            Surcharge (%)
-          </label>
+          <span className="bill-label">Surcharge</span>
           <p className="bill-hint">
-            Optional fee some venues add (e.g. service or card processing).
-            Applied to each person&apos;s food share, like tax.
+            Optional fee some venues add (e.g. service or card processing). Use a percentage of food
+            (default: food subtotal before tax), or enter the total surcharge in dollars from your
+            receipt—split by each person&apos;s food share.
           </p>
-          <input
-            id="surcharge-pct"
-            className="bill-input bill-input-block"
-            type="text"
-            inputMode="decimal"
-            placeholder="0"
-            value={surchargePercent}
-            onChange={(e) => setSurchargePercent(e.target.value)}
-          />
+          <div className="bill-tip-modes" role="group" aria-label="Surcharge entry mode">
+            <label className="bill-radio">
+              <input
+                type="radio"
+                name="surcharge-mode"
+                checked={surchargeMode === 'percent'}
+                onChange={() => setSurchargeMode('percent')}
+              />
+              Percentage
+            </label>
+            <label className="bill-radio">
+              <input
+                type="radio"
+                name="surcharge-mode"
+                checked={surchargeMode === 'dollars'}
+                onChange={() => setSurchargeMode('dollars')}
+              />
+              Total ($)
+            </label>
+          </div>
+          {surchargeMode === 'percent' ? (
+            <>
+              <label className="bill-label" htmlFor="surcharge-pct">
+                Surcharge (%)
+              </label>
+              <input
+                id="surcharge-pct"
+                className="bill-input bill-input-block"
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
+                value={surchargePercent}
+                onChange={(e) => setSurchargePercent(e.target.value)}
+              />
+              <div className="bill-surcharge-basis" role="group" aria-labelledby="surcharge-basis-label">
+                <span id="surcharge-basis-label" className="bill-label">
+                  Apply surcharge % to
+                </span>
+                <div className="bill-tip-modes bill-tip-modes--stack">
+                  <label className="bill-radio">
+                    <input
+                      type="radio"
+                      name="surcharge-basis"
+                      checked={surchargeBasis === 'food_subtotal'}
+                      onChange={() => setSurchargeBasis('food_subtotal')}
+                    />
+                    Food subtotal (each person&apos;s share)
+                  </label>
+                  <label className="bill-radio">
+                    <input
+                      type="radio"
+                      name="surcharge-basis"
+                      checked={surchargeBasis === 'subtotal_plus_tax'}
+                      onChange={() => setSurchargeBasis('subtotal_plus_tax')}
+                    />
+                    Subtotal + tax (common for service charges)
+                  </label>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="bill-manual-surcharge">
+              <label className="bill-label" htmlFor="manual-surcharge">
+                Total surcharge ($)
+              </label>
+              <input
+                id="manual-surcharge"
+                className="bill-input bill-input-block"
+                type="text"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={manualSurcharge}
+                onChange={(e) => setManualSurcharge(e.target.value)}
+              />
+              <p className="bill-tip-pct">
+                {totals.assignedSubtotalSum > 0 ? (
+                  <>
+                    ≈{' '}
+                    <strong>{totals.manualSurchargePercentDisplay.toFixed(2)}%</strong> of assigned
+                    food subtotals (split by each person&apos;s share)
+                  </>
+                ) : (
+                  <span className="bill-muted">
+                    Add assigned items to compute the equivalent percentage.
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
         </div>
         <div className="bill-grid-2 bill-grid-2--subtract">
           <div>
@@ -1056,6 +1346,170 @@ export default function App() {
       <>
       <section className="bill-panel bill-summary bill-panel--summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
+
+        <div className="bill-receipt-check" aria-labelledby="receipt-check-heading">
+          <h3 id="receipt-check-heading" className="bill-receipt-check__title">
+            Receipt check
+          </h3>
+          <p className="bill-muted bill-receipt-check__lead">
+            Compare the total below to your printed or card receipt. Some places calculate tip on{' '}
+            <strong>subtotal + tax</strong> instead of food subtotal alone.
+          </p>
+
+          {receiptVerifyStep === 'try_alt' || receiptVerifyStep === 'manual' ? (
+            <p className="bill-muted bill-receipt-check__surcharge-hint">
+              If the total still doesn&apos;t match, open{' '}
+              <button type="button" className="bill-link-button" onClick={() => goToStep('tax')}>
+                Tax &amp; extras
+              </button>{' '}
+              and confirm whether the surcharge applies to <strong>food subtotal only</strong> or{' '}
+              <strong>subtotal + tax</strong> (before tip).
+            </p>
+          ) : null}
+
+          {receiptTotalsMode !== 'default' ? (
+            <p className="bill-receipt-check__status">
+              {receiptTotalsMode === 'tip_on_subtotal_plus_tax'
+                ? 'Using tip calculated on each person’s subtotal plus tax (same tip % as above).'
+                : 'Using tax and tip dollar amounts from your receipt, split by food subtotal.'}{' '}
+              <button type="button" className="bill-link-button" onClick={resetReceiptCheck}>
+                Reset receipt check
+              </button>
+            </p>
+          ) : null}
+
+          {receiptVerifyStep === 'ask' && receiptTotalsMode === 'default' ? (
+            <div className="bill-receipt-check__block">
+              <p className="bill-receipt-check__total-line">
+                <span className="bill-receipt-check__label">Total (this app, tax &amp; tip on food subtotal)</span>
+                <strong className="bill-receipt-check__amount">{formatMoney(totals.grand.total)}</strong>
+              </p>
+              <p className="bill-muted bill-receipt-check__question">Is this the correct amount?</p>
+              <div className="bill-receipt-check__actions">
+                <button
+                  type="button"
+                  className="bill-btn bill-btn-primary"
+                  onClick={() => setReceiptVerifyStep('done')}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  className="bill-btn bill-btn-ghost"
+                  onClick={() => setReceiptVerifyStep('try_alt')}
+                >
+                  No
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {receiptVerifyStep === 'try_alt' && receiptTotalsMode === 'default' ? (
+            <div className="bill-receipt-check__block">
+              <p className="bill-muted bill-receipt-check__note">
+                Many restaurants apply your tip percentage to <strong>subtotal + tax</strong> (per person
+                or on the check). Try this total instead:
+              </p>
+              <p className="bill-receipt-check__total-line">
+                <span className="bill-receipt-check__label">
+                  Total (tip % applied to subtotal + tax
+                  {tipMode === 'preset' ? `, ${tipPreset}%` : ''})
+                </span>
+                <strong className="bill-receipt-check__amount">
+                  {formatMoney(alternateTipBaseTotals.grand.total)}
+                </strong>
+              </p>
+              <div className="bill-receipt-check__actions">
+                <button
+                  type="button"
+                  className="bill-btn bill-btn-primary"
+                  onClick={() => {
+                    setReceiptTotalsMode('tip_on_subtotal_plus_tax')
+                    setReceiptVerifyStep('done')
+                  }}
+                >
+                  This matches my receipt
+                </button>
+                <button
+                  type="button"
+                  className="bill-btn bill-btn-ghost"
+                  onClick={() => setReceiptVerifyStep('manual')}
+                >
+                  Still not right
+                </button>
+                <button
+                  type="button"
+                  className="bill-btn bill-btn-ghost"
+                  onClick={() => setReceiptVerifyStep('ask')}
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {receiptVerifyStep === 'manual' && receiptTotalsMode === 'default' ? (
+            <div className="bill-receipt-check__block">
+              <p className="bill-muted">
+                Enter the <strong>total tax</strong> and <strong>total tip</strong> shown on your receipt.
+                The app will split them across people in proportion to each person’s food subtotal, then
+                recalculate what everyone owes.
+              </p>
+              <div className="bill-receipt-check__manual-grid">
+                <div>
+                  <label className="bill-label" htmlFor="manual-receipt-tax">
+                    Tax from receipt ($)
+                  </label>
+                  <input
+                    id="manual-receipt-tax"
+                    className="bill-input bill-input-block"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={manualReceiptTax}
+                    onChange={(e) => setManualReceiptTax(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="bill-label" htmlFor="manual-receipt-tip">
+                    Tip from receipt ($)
+                  </label>
+                  <input
+                    id="manual-receipt-tip"
+                    className="bill-input bill-input-block"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={manualReceiptTip}
+                    onChange={(e) => setManualReceiptTip(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="bill-receipt-check__actions">
+                <button type="button" className="bill-btn bill-btn-primary" onClick={applyManualReceiptAmounts}>
+                  Apply
+                </button>
+                <button
+                  type="button"
+                  className="bill-btn bill-btn-ghost"
+                  onClick={() => setReceiptVerifyStep('try_alt')}
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {receiptVerifyStep === 'done' && receiptTotalsMode === 'default' ? (
+            <p className="bill-muted bill-receipt-check__done">
+              You confirmed this total matches your receipt.{' '}
+              <button type="button" className="bill-link-button" onClick={() => setReceiptVerifyStep('ask')}>
+                Review again
+              </button>
+            </p>
+          ) : null}
+        </div>
+
         <p className="bill-muted bill-summary-meta">
           
           {tipMode === 'preset' ? (
@@ -1084,12 +1538,19 @@ export default function App() {
                 <th scope="col">Person</th>
                 <th scope="col">Subtotal</th>
                 <th scope="col">
-                  Surcharge ({parseMoney(surchargePercent).toFixed(2)}%)
+                  {surchargeMode === 'dollars'
+                    ? `Surcharge (≈${totals.manualSurchargePercentDisplay.toFixed(2)}% of food)`
+                    : `Surcharge (${parseMoney(surchargePercent).toFixed(2)}% of ${surchargeBasis === 'subtotal_plus_tax' ? 'subtotal+tax' : 'food'})`}
                 </th>
-                <th scope="col">Tax ({parseMoney(taxPercent).toFixed(2)}%)</th>
                 <th scope="col">
-                  Tip
-                  {tipMode === 'preset' ? ` (${tipPreset}%)` : ''}
+                  {receiptTotalsMode === 'manual'
+                    ? 'Tax (from receipt)'
+                    : `Tax (${parseMoney(taxPercent).toFixed(2)}%)`}
+                </th>
+                <th scope="col">
+                  {receiptTotalsMode === 'manual'
+                    ? 'Tip (from receipt)'
+                    : `Tip${tipMode === 'preset' ? ` (${tipPreset}%)` : ''}`}
                 </th>
                 <th scope="col">Extras</th>
                 <th scope="col">Total due</th>
