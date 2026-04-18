@@ -1207,13 +1207,10 @@ export default function App() {
               </div>
             )}
           </div>
-        </div>
-        <div className="bill-surcharge-field">
+        <div className="bill-surcharge-field bill-surcharge-field--span">
           <span className="bill-label">Surcharge</span>
-          <p className="bill-hint">
-            Optional fee some venues add (e.g. service or card processing). Use a percentage of food
-            (default: food subtotal before tax), or enter the total surcharge in dollars from your
-            receipt—split by each person&apos;s food share.
+          <p className="bill-hint bill-hint--tight">
+            Optional venue fee (e.g. service charge). Use a % or the dollar total from your receipt.
           </p>
           <div className="bill-tip-modes" role="group" aria-label="Surcharge entry mode">
             <label className="bill-radio">
@@ -1232,11 +1229,11 @@ export default function App() {
                 checked={surchargeMode === 'dollars'}
                 onChange={() => setSurchargeMode('dollars')}
               />
-              Total ($)
+              Manual total
             </label>
           </div>
           {surchargeMode === 'percent' ? (
-            <>
+            <div className="bill-surcharge-percent">
               <label className="bill-label" htmlFor="surcharge-pct">
                 Surcharge (%)
               </label>
@@ -1249,34 +1246,36 @@ export default function App() {
                 value={surchargePercent}
                 onChange={(e) => setSurchargePercent(e.target.value)}
               />
-              <div className="bill-surcharge-basis" role="group" aria-labelledby="surcharge-basis-label">
-                <span id="surcharge-basis-label" className="bill-label">
-                  Apply surcharge % to
-                </span>
-                <div className="bill-tip-modes bill-tip-modes--stack">
-                  <label className="bill-radio">
-                    <input
-                      type="radio"
-                      name="surcharge-basis"
-                      checked={surchargeBasis === 'food_subtotal'}
-                      onChange={() => setSurchargeBasis('food_subtotal')}
-                    />
-                    Food subtotal (each person&apos;s share)
-                  </label>
-                  <label className="bill-radio">
-                    <input
-                      type="radio"
-                      name="surcharge-basis"
-                      checked={surchargeBasis === 'subtotal_plus_tax'}
-                      onChange={() => setSurchargeBasis('subtotal_plus_tax')}
-                    />
-                    Subtotal + tax (common for service charges)
-                  </label>
-                </div>
+              <span id="surcharge-basis-label" className="bill-label bill-label--inline-follow">
+                Apply % to
+              </span>
+              <div
+                className="bill-tip-modes bill-tip-modes--surcharge-basis"
+                role="group"
+                aria-labelledby="surcharge-basis-label"
+              >
+                <label className="bill-radio">
+                  <input
+                    type="radio"
+                    name="surcharge-basis"
+                    checked={surchargeBasis === 'food_subtotal'}
+                    onChange={() => setSurchargeBasis('food_subtotal')}
+                  />
+                  Subtotal
+                </label>
+                <label className="bill-radio">
+                  <input
+                    type="radio"
+                    name="surcharge-basis"
+                    checked={surchargeBasis === 'subtotal_plus_tax'}
+                    onChange={() => setSurchargeBasis('subtotal_plus_tax')}
+                  />
+                  Subtotal + tax
+                </label>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="bill-manual-surcharge">
+            <div className="bill-manual-tip bill-manual-surcharge">
               <label className="bill-label" htmlFor="manual-surcharge">
                 Total surcharge ($)
               </label>
@@ -1294,16 +1293,17 @@ export default function App() {
                   <>
                     ≈{' '}
                     <strong>{totals.manualSurchargePercentDisplay.toFixed(2)}%</strong> of assigned
-                    food subtotals (split by each person&apos;s share)
+                    subtotals (distributed by each person&apos;s share)
                   </>
                 ) : (
                   <span className="bill-muted">
-                    Add assigned items to compute the equivalent percentage.
+                    Add assigned items to compute surcharge percentage.
                   </span>
                 )}
               </p>
             </div>
           )}
+        </div>
         </div>
         <div className="bill-grid-2 bill-grid-2--subtract">
           <div>

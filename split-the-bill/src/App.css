@@ -753,6 +753,30 @@ html, body {
   max-width: 22rem;
 }
 
+.bill-surcharge-field--span {
+  grid-column: 1 / -1;
+  max-width: none;
+}
+
+.bill-hint--tight {
+  margin-top: 0;
+  margin-bottom: 8px;
+  max-width: 42ch;
+}
+
+.bill-surcharge-percent {
+  margin-top: 4px;
+}
+
+.bill-label--inline-follow {
+  display: block;
+  margin-top: 10px;
+}
+
+.bill-tip-modes--surcharge-basis {
+  margin-bottom: 0;
+}
+
 @media (max-width: 720px) {
   .bill-grid-2 {
     grid-template-columns: 1fr;
@@ -776,10 +800,6 @@ html, body {
   flex-direction: column;
   gap: 8px;
   align-items: flex-start;
-}
-
-.bill-surcharge-basis {
-  margin-top: 12px;
 }
 
 .bill-receipt-check__surcharge-hint {
