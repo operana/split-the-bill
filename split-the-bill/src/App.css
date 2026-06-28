@@ -736,45 +736,78 @@ html, body {
   gap: 24px;
 }
 
-.bill-grid-2--subtract {
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
-  background: rgba(198, 40, 40, 0.04);
-  border: 1px solid rgba(198, 40, 40, 0.14);
-  border-radius: 12px;
+.bill-tax-required {
+  margin-bottom: 20px;
   padding: 16px 14px;
+  border: 2px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--diner-blue-soft);
 }
 
-.bill-surcharge-field {
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
-  max-width: 22rem;
+.bill-tax-optional {
+  padding: 16px 14px;
+  border: 1px dashed rgba(83, 74, 66, 0.35);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.45);
 }
 
-.bill-surcharge-field--span {
-  grid-column: 1 / -1;
-  max-width: none;
+.bill-tax-section-title {
+  margin: 0 0 6px;
+  font-family: var(--heading);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.bill-tax-section-lede {
+  margin: 0 0 14px;
+}
+
+.bill-tax-field--required .bill-label {
+  color: var(--diner-blue);
+  font-weight: 700;
+}
+
+.bill-label--optional {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.bill-tax-field--optional {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(83, 74, 66, 0.12);
+}
+
+.bill-tax-field--optional:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.bill-input--optional {
+  background: rgba(255, 255, 255, 0.75);
+  border-style: dashed;
+}
+
+.bill-credits .bill-panel-heading-row {
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+.bill-credits-list {
+  margin-bottom: 8px;
+}
+
+.bill-credits-total {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .bill-hint--tight {
   margin-top: 0;
   margin-bottom: 8px;
   max-width: 42ch;
-}
-
-.bill-surcharge-percent {
-  margin-top: 4px;
-}
-
-.bill-label--inline-follow {
-  display: block;
-  margin-top: 10px;
-}
-
-.bill-tip-modes--surcharge-basis {
-  margin-bottom: 0;
 }
 
 @media (max-width: 720px) {
@@ -788,84 +821,6 @@ html, body {
   font-weight: 500;
   color: var(--text-h);
   margin-bottom: 6px;
-}
-
-.bill-tip-modes {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 10px;
-}
-
-.bill-tip-modes--stack {
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.bill-receipt-check__surcharge-hint {
-  margin: 0 0 14px;
-  max-width: 52ch;
-  line-height: 1.45;
-}
-
-.bill-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 0.95rem;
-}
-
-.bill-presets {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px 18px;
-}
-
-.bill-preset-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.bill-preset-amt {
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  line-height: 1.2;
-}
-
-.bill-pill {
-  font: inherit;
-  padding: 8px 16px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-h);
-  cursor: pointer;
-}
-
-.bill-pill-active {
-  border-color: var(--accent-border);
-  background: var(--diner-blue-soft);
-  color: var(--diner-blue);
-  font-weight: 700;
-}
-
-.bill-manual-tip {
-  margin-top: 4px;
-}
-
-.bill-manual-surcharge {
-  margin-top: 4px;
-}
-
-.bill-tip-pct {
-  margin: 8px 0 0;
-  font-size: 0.9rem;
-  color: var(--text-h);
 }
 
 .bill-summary-meta {
@@ -967,149 +922,12 @@ html, body {
   font-family: var(--heading);
 }
 
-.bill-receipt-meter {
-  margin: 0 0 12px;
-}
-
-.bill-receipt-meter__list {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0 4px;
-  list-style: none;
-  margin: 0;
-  padding: 2px 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-.bill-receipt-meter__stepItem {
-  display: flex;
-}
-
-.bill-receipt-meter__dot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  font-size: 1.15rem;
-  line-height: 1;
-  color: rgba(13, 92, 156, 0.35);
-  user-select: none;
-}
-
-.bill-receipt-meter__step {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  text-align: center;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 4.75rem;
-  padding: 6px 4px 4px;
-  border-radius: 6px;
-  transition: background 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
-}
-
-.bill-receipt-meter__step:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.bill-receipt-meter__step:hover {
-  background: rgba(13, 92, 156, 0.06);
-}
-
-.bill-receipt-meter__step:active {
-  transform: translateY(0.5px);
-}
-
-.bill-receipt-meter__step--upcoming {
-  opacity: 0.48;
-}
-
-.bill-receipt-meter__step--upcoming .bill-receipt-meter__badge {
-  border-color: rgba(13, 92, 156, 0.28);
-  color: var(--text-h);
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.bill-receipt-meter__step--current {
-  opacity: 1;
-  background: rgba(13, 92, 156, 0.1);
-  box-shadow: 0 0 0 1px rgba(13, 92, 156, 0.35);
-}
-
-.bill-receipt-meter__step--current .bill-receipt-meter__badge {
-  border-color: var(--diner-blue);
-  background: var(--diner-blue-soft);
-  color: var(--diner-blue);
-  font-weight: 700;
-}
-
-.bill-receipt-meter__step--complete {
-  opacity: 1;
-}
-
-.bill-receipt-meter__step--complete .bill-receipt-meter__badge {
-  border-color: rgba(46, 229, 157, 0.55);
-  background: rgba(46, 229, 157, 0.14);
-  color: #0d6b4a;
-  font-weight: 600;
-}
-
-.bill-receipt-meter__badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.65rem;
-  height: 1.65rem;
-  border-radius: 50%;
-  border: 2px solid rgba(13, 92, 156, 0.35);
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
-  font-family: var(--mono);
-}
-
-.bill-receipt-meter__step-label {
-  font-size: 0.65rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-h);
-  text-align: center;
-  line-height: 1.2;
-  max-width: 6.5rem;
-}
-
-.bill-receipt-check__subtitle {
-  margin: 0 0 12px;
-  max-width: 48ch;
-  line-height: 1.35;
-  font-size: 0.78rem;
-  font-weight: 400;
-  color: var(--text-h);
-  opacity: 0.78;
-}
-
 .bill-receipt-check__utility {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
   margin: -2px 0 10px;
-}
-
-.bill-receipt-check__status {
-  margin: 0 0 12px;
-  font-size: 0.92rem;
-  line-height: 1.45;
-  max-width: 42ch;
 }
 
 .bill-receipt-check__block {
@@ -1146,16 +964,6 @@ html, body {
   color: var(--diner-blue);
 }
 
-.bill-receipt-check__amount-caption {
-  display: block;
-  max-width: 22ch;
-  font-size: 0.68rem;
-  font-weight: 400;
-  line-height: 1.25;
-  color: var(--text-h);
-  opacity: 0.72;
-}
-
 .bill-receipt-check__question {
   margin: 0 0 10px;
 }
@@ -1171,13 +979,6 @@ html, body {
   gap: 10px;
   align-items: center;
   margin-top: 10px;
-}
-
-.bill-receipt-check__manual-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 14px 16px;
-  margin: 12px 0 4px;
 }
 
 .bill-receipt-check__done {
