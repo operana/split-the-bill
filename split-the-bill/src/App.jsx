@@ -232,6 +232,9 @@ export default function App() {
     /** @type {'ask' | 'done'} */ ('ask'),
   )
   const [receiptMismatchHint, setReceiptMismatchHint] = useState(false)
+  const [stepDirection, setStepDirection] = useState(
+    /** @type {'forward' | 'back'} */ ('forward'),
+  )
 
   const totals = useMemo(
     () =>
@@ -371,6 +374,12 @@ export default function App() {
   const shareReadyPrevRef = useRef(false)
   const celebrateTimerRef = useRef(null)
   const newItemPriceRef = useRef(null)
+  const mainRef = useRef(null)
+  const pendingCreditFocusRef = useRef(null)
+
+  function lightTap() {
+    navigator.vibrate?.(10)
+  }
 
   function addPerson() {
     setPeople((prev) => [...prev, { id: uid(), name: '' }])
@@ -484,20 +493,28 @@ export default function App() {
     return false
   }, [currentStep, stepStatus.peopleDone, stepStatus.itemsDone, stepStatus.taxDone])
 
-  function goToStep(stepId) {
-    if (!STEPS.some((s) => s.id === stepId)) return
+  function goToStep(stepId, direction) {
+    const newIndex = STEPS.findIndex((s) => s.id === stepId)
+    if (newIndex === -1) return
+    const dir =
+      direction ??
+      (newIndex > stepIndex ? 'forward' : newIndex < stepIndex ? 'back' : stepDirection)
+    setStepDirection(dir)
     setCurrentStep(stepId)
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    requestAnimationFrame(() => {
+      mainRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+    })
   }
 
   function goPrev() {
     if (!canGoPrev) return
-    goToStep(STEPS[stepIndex - 1].id)
+    goToStep(STEPS[stepIndex - 1].id, 'back')
   }
 
   function goNext() {
     if (!canGoNext) return
-    goToStep(STEPS[stepIndex + 1].id)
+    lightTap()
+    goToStep(STEPS[stepIndex + 1].id, 'forward')
   }
 
   useEffect(() => {
@@ -515,6 +532,15 @@ export default function App() {
       if (celebrateTimerRef.current) window.clearTimeout(celebrateTimerRef.current)
     }
   }, [billProgress.readyToShare])
+
+  useEffect(() => {
+    const id = pendingCreditFocusRef.current
+    if (!id) return
+    pendingCreditFocusRef.current = null
+    requestAnimationFrame(() => {
+      document.getElementById(`credit-amount-${id}`)?.focus()
+    })
+  }, [credits])
 
   async function copyShareToClipboard() {
     try {
@@ -565,7 +591,9 @@ export default function App() {
   }
 
   function addCredit() {
-    setCredits((prev) => [...prev, { id: uid(), amount: '', label: '' }])
+    const id = uid()
+    pendingCreditFocusRef.current = id
+    setCredits((prev) => [...prev, { id, amount: '', label: '' }])
   }
 
   function removeCredit(id) {
@@ -603,29 +631,37 @@ export default function App() {
   }
 
   function StepNav({ showNext = true }) {
+    const currentLabel = STEPS[stepIndex]?.label ?? ''
     return (
-      <div className="bill-step-nav" aria-label="Step navigation">
-        <button
-          type="button"
-          className="bill-btn bill-btn-ghost"
-          onClick={goPrev}
-          disabled={!canGoPrev}
-        >
-          Back
-        </button>
-
-        <div className="bill-step-nav-spacer" />
-
-        {showNext ? (
+      <div className="bill-step-nav bill-step-nav--sticky" aria-label="Step navigation">
+        <p className="bill-step-nav-progress bill-mobile-only" aria-live="polite">
+          Step {stepIndex + 1} of {STEPS.length} · {currentLabel}
+        </p>
+        <div className="bill-step-nav-buttons">
           <button
             type="button"
-            className="bill-btn bill-btn-primary"
-            onClick={goNext}
-            disabled={!canGoNext}
+            className="bill-btn bill-btn-ghost bill-step-nav-back"
+            onClick={goPrev}
+            disabled={!canGoPrev}
           >
-            Next
+            Back
           </button>
-        ) : null}
+
+          <div className="bill-step-nav-spacer bill-desktop-only" />
+
+          {showNext ? (
+            <button
+              type="button"
+              className="bill-btn bill-btn-primary bill-step-nav-next"
+              onClick={goNext}
+              disabled={!canGoNext}
+            >
+              Next
+            </button>
+          ) : (
+            <div className="bill-step-nav-spacer bill-mobile-only" />
+          )}
+        </div>
       </div>
     )
   }
@@ -633,8 +669,53 @@ export default function App() {
   return (
     <div className="bill-app bill-receipt">
       <header className="bill-header bill-receipt-header">
-        <p className="bill-receipt-kicker">Guest check</p>
-        <div className="bill-receipt-meta">
+        <div className="bill-mobile-bar bill-mobile-only">
+          <div className="bill-mobile-bar__top">
+            <h1 className="bill-mobile-title">Split the bill</h1>
+            <span className="bill-mobile-guests">
+              {people.length} {people.length === 1 ? 'guest' : 'guests'}
+            </span>
+            <button
+              type="button"
+              className="bill-btn bill-btn-ghost bill-btn-compact"
+              onClick={withSparkle(resetAll)}
+            >
+              Reset
+            </button>
+          </div>
+          <ol className="bill-progress-dots" aria-label="Steps">
+            {STEPS.map((s) => {
+              const isCurrent = s.id === currentStep
+              const done =
+                s.id === 'people'
+                  ? stepStatus.peopleDone
+                  : s.id === 'items'
+                    ? stepStatus.itemsDone
+                    : s.id === 'tax'
+                      ? stepStatus.taxDone
+                      : stepStatus.summaryDone
+              const cls = isCurrent
+                ? 'bill-progress-dot bill-progress-dot--current'
+                : done
+                  ? 'bill-progress-dot bill-progress-dot--done'
+                  : 'bill-progress-dot'
+              return (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    className={cls}
+                    onClick={() => goToStep(s.id)}
+                    aria-label={s.label}
+                    aria-current={isCurrent ? 'step' : undefined}
+                  />
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+
+        <p className="bill-receipt-kicker bill-desktop-only">Guest check</p>
+        <div className="bill-receipt-meta bill-desktop-only">
           <span>
             Date <strong>{RECEIPT_DATE}</strong>
           </span>
@@ -651,13 +732,13 @@ export default function App() {
             </strong>
           </span>
         </div>
-        <div className="bill-header-top">
+        <div className="bill-header-top bill-desktop-only">
           <h1 className="bill-title-diner">Split the bill</h1>
           <button type="button" className="bill-btn bill-btn-ghost" onClick={withSparkle(resetAll)}>
             Start Over
           </button>
         </div>
-        <div className="bill-row" style={{ marginTop: 12 }}>
+        <div className="bill-row bill-desktop-only" style={{ marginTop: 12 }}>
           <label className="sr-only" htmlFor="restaurant-title">
             Restaurant title
           </label>
@@ -671,7 +752,7 @@ export default function App() {
           />
         </div>
 
-        <nav className="bill-stepper" aria-label="Steps">
+        <nav className="bill-stepper bill-desktop-only" aria-label="Steps">
           {STEPS.map((s) => {
             const isCurrent = s.id === currentStep
             const done =
@@ -705,8 +786,9 @@ export default function App() {
         <p className="bill-lede" aria-hidden="true" />
       </header>
 
+      <main className="bill-main" ref={mainRef}>
+      <div className={`bill-step-stage bill-step-stage--${stepDirection}`} key={currentStep}>
       {currentStep === 'people' ? (
-      <>
       <section className="bill-panel bill-panel--people" aria-labelledby="people-heading">
         <div className="bill-panel-heading-row">
           <h2 id="people-heading">
@@ -745,12 +827,9 @@ export default function App() {
           ))}
         </ul>
       </section>
-      <StepNav />
-      </>
       ) : null}
 
       {currentStep === 'items' ? (
-      <>
       <section
         className="bill-panel bill-panel--items"
         aria-labelledby="items-heading"
@@ -911,12 +990,9 @@ export default function App() {
           ))}
         </ul>
       </section>
-      <StepNav />
-      </>
       ) : null}
 
       {currentStep === 'tax' ? (
-      <>
       <section className="bill-panel bill-panel--tax" aria-labelledby="tax-tip-heading">
         <h2 id="tax-tip-heading">Tax &amp; extras</h2>
 
@@ -1046,12 +1122,9 @@ export default function App() {
           </div>
         </div>
       </section>
-      <StepNav />
-      </>
       ) : null}
 
       {currentStep === 'summary' ? (
-      <>
       <section className="bill-panel bill-summary bill-panel--summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
 
@@ -1082,6 +1155,7 @@ export default function App() {
                   type="button"
                   className="bill-btn bill-btn-primary"
                   onClick={() => {
+                    lightTap()
                     setReceiptVerifyStep('done')
                     setReceiptMismatchHint(false)
                   }}
@@ -1226,13 +1300,15 @@ export default function App() {
           {copyStatus ? <p className="bill-muted bill-copy-status">{copyStatus}</p> : null}
         </div>
       </section>
-      <StepNav showNext={false} />
-      </>
       ) : null}
+      </div>
 
       <footer className="bill-receipt-footer">
         <p>{receiptFooterLine}</p>
       </footer>
+      </main>
+
+      <StepNav showNext={currentStep !== 'summary'} />
     </div>
   )
 }

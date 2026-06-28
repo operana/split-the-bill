@@ -57,10 +57,18 @@ body {
   text-align: center;
   border-inline: 2px dashed var(--border);
   min-height: 100svh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   background: var(--paper);
+}
+
+@media (max-width: 600px) {
+  #root {
+    width: 100%;
+    border-inline: none;
+  }
 }
 
 h1,
