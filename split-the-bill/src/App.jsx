@@ -49,7 +49,7 @@ function buildShareText({ restaurantTitle, people, totals, credits }) {
     lines.push(`${name}`)
     lines.push(`  TOTAL DUE: ${formatMoney(r.total)}`)
     lines.push(`  Subtotal: ${formatMoney(r.subtotal)}`)
-    lines.push(`  Surcharge: ${formatMoney(r.surcharge)}`)
+    if (r.surcharge > 0) lines.push(`  Surcharge: ${formatMoney(r.surcharge)}`)
     lines.push(`  Tax: ${formatMoney(r.tax)}`)
     lines.push(`  Tip: ${formatMoney(r.tip)}`)
     if ((r.adjustment ?? 0) > 0) lines.push(`  Credits: -${formatMoney(r.adjustment)}`)
@@ -61,7 +61,8 @@ function buildShareText({ restaurantTitle, people, totals, credits }) {
   lines.push('Receipt (all items)')
   lines.push(`  Total due: ${formatMoney(totals.grand.total)}`)
   lines.push(`  Subtotal: ${formatMoney(totals.grand.subtotal)}`)
-  lines.push(`  Surcharge: ${formatMoney(totals.grand.surcharge)}`)
+  if (totals.grand.surcharge > 0)
+    lines.push(`  Surcharge: ${formatMoney(totals.grand.surcharge)}`)
   lines.push(`  Tax: ${formatMoney(totals.grand.tax)}`)
   lines.push(`  Tip: ${formatMoney(totals.grand.tip)}`)
   const creditEntries = credits.filter((c) => parseMoney(c.amount) > 0)
@@ -228,10 +229,6 @@ export default function App() {
   const [surchargeAmount, setSurchargeAmount] = useState('')
   const [credits, setCredits] = useState(() => [{ id: uid(), amount: '', label: '' }])
   const [currentStep, setCurrentStep] = useState('people')
-  const [receiptVerifyStep, setReceiptVerifyStep] = useState(
-    /** @type {'ask' | 'done'} */ ('ask'),
-  )
-  const [receiptMismatchHint, setReceiptMismatchHint] = useState(false)
   const [stepDirection, setStepDirection] = useState(
     /** @type {'forward' | 'back'} */ ('forward'),
   )
@@ -607,11 +604,6 @@ export default function App() {
     setCredits((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
   }
 
-  function resetReceiptCheck() {
-    setReceiptVerifyStep('ask')
-    setReceiptMismatchHint(false)
-  }
-
   function resetAll() {
     if (!window.confirm('Are you sure you want to reset?')) return
     setRestaurantTitle('')
@@ -626,8 +618,6 @@ export default function App() {
     setSurchargeAmount('')
     setCredits([{ id: uid(), amount: '', label: '' }])
     setCurrentStep('people')
-    setReceiptVerifyStep('ask')
-    setReceiptMismatchHint(false)
   }
 
   function StepNav({ showNext = true }) {
@@ -1128,81 +1118,14 @@ export default function App() {
       <section className="bill-panel bill-summary bill-panel--summary" aria-labelledby="summary-heading">
         <h2 id="summary-heading">Summary</h2>
 
-        <div className="bill-receipt-check" aria-labelledby="receipt-check-heading">
-          <h3 id="receipt-check-heading" className="bill-receipt-check__title">
-            Receipt Check
-          </h3>
-
-          {receiptVerifyStep === 'done' ? (
-            <div className="bill-receipt-check__utility">
-              <button type="button" className="bill-link-button" onClick={resetReceiptCheck}>
-                Review again
-              </button>
-            </div>
-          ) : null}
-
-          {receiptVerifyStep === 'ask' && !receiptMismatchHint ? (
-            <div className="bill-receipt-check__block">
-              <p className="bill-receipt-check__total-line">
-                <span className="bill-receipt-check__total-word">Total</span>
-                <span className="bill-receipt-check__total-figure">
-                  <strong className="bill-receipt-check__amount">{formatMoney(totals.grand.total)}</strong>
-                </span>
-              </p>
-              <p className="bill-muted bill-receipt-check__question">Is this the correct amount on your receipt?</p>
-              <div className="bill-receipt-check__actions">
-                <button
-                  type="button"
-                  className="bill-btn bill-btn-primary"
-                  onClick={() => {
-                    lightTap()
-                    setReceiptVerifyStep('done')
-                    setReceiptMismatchHint(false)
-                  }}
-                >
-                  Yes
-                </button>
-                <button
-                  type="button"
-                  className="bill-btn bill-btn-ghost"
-                  onClick={() => setReceiptMismatchHint(true)}
-                >
-                  No
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {receiptVerifyStep === 'ask' && receiptMismatchHint ? (
-            <div className="bill-receipt-check__block">
-              <p className="bill-muted">
-                Double-check item prices and the tax, tip, and surcharge amounts on the Tax &amp; extras
-                step. Each person&apos;s share is split proportionally by food subtotal.
-              </p>
-              <div className="bill-receipt-check__actions">
-                <button
-                  type="button"
-                  className="bill-btn bill-btn-primary"
-                  onClick={() => goToStep('tax')}
-                >
-                  Edit tax &amp; extras
-                </button>
-                <button
-                  type="button"
-                  className="bill-btn bill-btn-ghost"
-                  onClick={() => setReceiptMismatchHint(false)}
-                >
-                  Try again
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {receiptVerifyStep === 'done' ? (
-            <p className="bill-muted bill-receipt-check__done">
-              You confirmed this total matches your receipt.
-            </p>
-          ) : null}
+        <div className="bill-receipt-check bill-receipt-check--compact" role="note">
+          <div className="bill-receipt-check__row">
+            <span className="bill-receipt-check__label">Receipt total</span>
+            <strong className="bill-receipt-check__amount">{formatMoney(totals.grand.total)}</strong>
+          </div>
+          <p className="bill-receipt-check__note">
+            Match your receipt. If not, recheck items and tax &amp; extras.
+          </p>
         </div>
 
         <p className="bill-muted bill-summary-meta">

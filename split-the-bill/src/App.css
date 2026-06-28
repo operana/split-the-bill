@@ -1093,83 +1093,46 @@ html, body {
 }
 
 .bill-receipt-check {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   padding: 16px 14px;
   border: 1px solid rgba(13, 92, 156, 0.22);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.55);
 }
 
-.bill-receipt-check__title {
-  font-size: 1rem;
-  margin: 0 0 8px;
-  font-weight: 600;
-  color: var(--diner-blue);
-  font-family: var(--heading);
+.bill-receipt-check--compact {
+  padding: 8px 12px;
+  margin-bottom: 10px;
 }
 
-.bill-receipt-check__utility {
+.bill-receipt-check__row {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  margin: -2px 0 10px;
-}
-
-.bill-receipt-check__block {
-  margin-top: 4px;
-}
-
-.bill-receipt-check__total-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px 16px;
-  margin: 0 0 8px;
+  gap: 12px;
+  margin-bottom: 4px;
 }
 
-.bill-receipt-check__total-word {
-  font-size: 0.95rem;
+.bill-receipt-check__label {
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-h);
-  padding-top: 2px;
-}
-
-.bill-receipt-check__total-figure {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--diner-blue);
 }
 
 .bill-receipt-check__amount {
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
   color: var(--diner-blue);
 }
 
-.bill-receipt-check__question {
-  margin: 0 0 10px;
-}
-
 .bill-receipt-check__note {
-  margin: 0 0 10px;
-  line-height: 1.45;
-}
-
-.bill-receipt-check__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.bill-receipt-check__done {
   margin: 0;
-  max-width: 42ch;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--text);
+  opacity: 0.85;
 }
 
 .bill-link-button {
