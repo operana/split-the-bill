@@ -6,7 +6,6 @@ const RECEIPT_DATE = new Date().toLocaleDateString('en-US', {
   weekday: 'short',
   month: 'short',
   day: 'numeric',
-  year: 'numeric',
 })
 import './App.css'
 
@@ -631,7 +630,7 @@ export default function App() {
   }
 
   function resetAll() {
-    if (!window.confirm('Are you sure you want to reset?')) return
+    if (!window.confirm('Start a new bill? This will clear the current split.')) return
     setRestaurantTitle('')
     setCheckAnimKey((k) => k + 1)
     setPeople([
@@ -799,7 +798,7 @@ export default function App() {
                 className="bill-btn bill-btn-ghost bill-btn-compact"
                 onClick={withSparkle(resetAll)}
               >
-                Reset
+                Split New Bill
               </button>
             ) : null}
           </div>
@@ -870,7 +869,7 @@ export default function App() {
         <div className="bill-header-top bill-desktop-only">
           <h1 className="bill-title-diner">Split the bill</h1>
           <button type="button" className="bill-btn bill-btn-ghost" onClick={withSparkle(resetAll)}>
-            Start Over
+            Split New Bill
           </button>
         </div>
         <div className="bill-row bill-desktop-only" style={{ marginTop: 12 }}>
