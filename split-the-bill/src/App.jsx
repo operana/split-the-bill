@@ -33,6 +33,20 @@ function formatMoney(n) {
   }).format(n)
 }
 
+function personDisplayName(person, people) {
+  const idx = people.findIndex((x) => x.id === person.id)
+  return person.name.trim() || `Person ${idx + 1}`
+}
+
+function summaryBreakdownParts(row) {
+  const parts = [`Subtotal ${formatMoney(row.subtotal)}`]
+  if (row.surcharge > 0) parts.push(`Surcharge ${formatMoney(row.surcharge)}`)
+  parts.push(`Tax ${formatMoney(row.tax)}`)
+  parts.push(`Tip ${formatMoney(row.tip)}`)
+  if (row.adjustment > 0) parts.push(`Credits −${formatMoney(row.adjustment)}`)
+  return parts
+}
+
 function sumCreditAmounts(credits) {
   return round2(
     credits.reduce((sum, c) => sum + Math.max(0, parseMoney(c.amount)), 0),
@@ -132,21 +146,25 @@ function computeSplitTotals({
       unassignedItems.push(item.id)
       continue
     }
-    const share = round2(price / assignees.length)
-    for (const id of assignees) {
-      personSubtotals[id] = round2(personSubtotals[id] + share)
-    }
+    const shares = allocateCents(price, assignees.map(() => 1))
+    assignees.forEach((id, i) => {
+      personSubtotals[id] = round2(personSubtotals[id] + shares[i])
+    })
   }
 
-  const assignedSubtotalSum = Object.values(personSubtotals).reduce((a, b) => a + b, 0)
+  const itemsTotal = round2(items.reduce((s, it) => s + round2(parseMoney(it.price)), 0))
+  const assignedSubtotalSum = round2(
+    Object.values(personSubtotals).reduce((a, b) => a + b, 0),
+  )
 
   const subs = people.map((p) => round2(personSubtotals[p.id] ?? 0))
-  const taxAlloc = allocateCents(round2(Math.max(0, parseMoney(taxAmountStr))), subs)
-  const tipAlloc = allocateCents(round2(Math.max(0, parseMoney(tipAmountStr))), subs)
-  const surchargeAlloc = allocateCents(
-    round2(Math.max(0, parseMoney(surchargeAmountStr))),
-    subs,
-  )
+  const taxAmount = round2(Math.max(0, parseMoney(taxAmountStr)))
+  const tipAmount = round2(Math.max(0, parseMoney(tipAmountStr)))
+  const surchargeAmount = round2(Math.max(0, parseMoney(surchargeAmountStr)))
+
+  const taxAlloc = allocateCents(taxAmount, subs)
+  const tipAlloc = allocateCents(tipAmount, subs)
+  const surchargeAlloc = allocateCents(surchargeAmount, subs)
 
   const rowsBase = people.map((p, i) => {
     const sub = subs[i] ?? 0
@@ -165,15 +183,8 @@ function computeSplitTotals({
     }
   })
 
-  const subtotal = round2(rowsBase.reduce((s, r) => s + r.subtotal, 0))
-  const surcharge = round2(rowsBase.reduce((s, r) => s + r.surcharge, 0))
-  const tax = round2(rowsBase.reduce((s, r) => s + r.tax, 0))
-  const tip = round2(rowsBase.reduce((s, r) => s + r.tip, 0))
-  const totalBeforeAdjustments = round2(
-    rowsBase.reduce((s, r) => s + r.totalBeforeAdjustments, 0),
-  )
-
   const creditsTotal = sumCreditAmounts(credits)
+  const totalBeforeAdjustments = round2(itemsTotal + surchargeAmount + taxAmount + tipAmount)
   const totalAdjustments = round2(Math.min(totalBeforeAdjustments, creditsTotal))
 
   const total = round2(Math.max(0, totalBeforeAdjustments - totalAdjustments))
@@ -191,10 +202,10 @@ function computeSplitTotals({
   })
 
   const grand = {
-    subtotal,
-    surcharge,
-    tax,
-    tip,
+    subtotal: itemsTotal,
+    surcharge: surchargeAmount,
+    tax: taxAmount,
+    tip: tipAmount,
     credits: creditsTotal,
     totalBeforeAdjustments,
     total,
@@ -231,6 +242,17 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState('people')
   const [stepDirection, setStepDirection] = useState(
     /** @type {'forward' | 'back'} */ ('forward'),
+  )
+  const [taxOptionalOpen, setTaxOptionalOpen] = useState(false)
+
+  const hasOptionalTaxData = useMemo(
+    () =>
+      String(surchargeAmount).trim().length > 0 ||
+      credits.some(
+        (c) =>
+          String(c.amount ?? '').trim().length > 0 || String(c.label ?? '').trim().length > 0,
+      ),
+    [surchargeAmount, credits],
   )
 
   const totals = useMemo(
@@ -287,6 +309,10 @@ export default function App() {
       else mq.removeListener(apply)
     }
   }, [])
+
+  useEffect(() => {
+    if (hasOptionalTaxData) setTaxOptionalOpen(true)
+  }, [hasOptionalTaxData])
 
   useEffect(() => {
     let cancelled = false
@@ -617,16 +643,13 @@ export default function App() {
     setTipAmount('')
     setSurchargeAmount('')
     setCredits([{ id: uid(), amount: '', label: '' }])
+    setTaxOptionalOpen(false)
     setCurrentStep('people')
   }
 
   function StepNav({ showNext = true }) {
-    const currentLabel = STEPS[stepIndex]?.label ?? ''
     return (
       <div className="bill-step-nav bill-step-nav--sticky" aria-label="Step navigation">
-        <p className="bill-step-nav-progress bill-mobile-only" aria-live="polite">
-          Step {stepIndex + 1} of {STEPS.length} · {currentLabel}
-        </p>
         <div className="bill-step-nav-buttons">
           <button
             type="button"
@@ -634,7 +657,7 @@ export default function App() {
             onClick={goPrev}
             disabled={!canGoPrev}
           >
-            Back
+            ← Back
           </button>
 
           <div className="bill-step-nav-spacer bill-desktop-only" />
@@ -646,7 +669,7 @@ export default function App() {
               onClick={goNext}
               disabled={!canGoNext}
             >
-              Next
+              Next →
             </button>
           ) : (
             <div className="bill-step-nav-spacer bill-mobile-only" />
@@ -656,23 +679,145 @@ export default function App() {
     )
   }
 
+  function renderTaxOptionalFields() {
+    return (
+      <>
+        <div className="bill-tax-adjust bill-tax-adjust--add">
+          <div className="bill-tax-adjust__header">
+            <span className="bill-tax-adjust__badge" aria-hidden="true">
+              +
+            </span>
+            <div className="bill-tax-adjust__intro">
+              <div className="bill-tax-adjust__title-row">
+                <h4 className="bill-tax-adjust__title">Surcharge</h4>
+                <span className="bill-tax-adjust__tag">Adds to total</span>
+              </div>
+              <p className="bill-hint bill-hint--tight bill-tax-adjust__hint">
+                Venue fee or service charge.
+              </p>
+            </div>
+          </div>
+          <label className="bill-label bill-label--optional" htmlFor="surcharge-amount">
+            Amount ($)
+          </label>
+          <input
+            id="surcharge-amount"
+            className="bill-input bill-input-block bill-input--add"
+            type="text"
+            inputMode="decimal"
+            placeholder="0.00"
+            value={surchargeAmount}
+            onChange={(e) => setSurchargeAmount(e.target.value)}
+          />
+        </div>
+
+        <div className="bill-tax-adjust bill-tax-adjust--off" aria-labelledby="credits-heading">
+          <div className="bill-tax-adjust__header bill-tax-adjust__header--split">
+            <span className="bill-tax-adjust__badge" aria-hidden="true">
+              −
+            </span>
+            <div className="bill-tax-adjust__intro">
+              <div className="bill-tax-adjust__title-row">
+                <h4 className="bill-tax-adjust__title" id="credits-heading">
+                  Credits
+                </h4>
+                <span className="bill-tax-adjust__tag">Comes off total</span>
+              </div>
+              <p className="bill-hint bill-hint--tight bill-tax-adjust__hint">
+                Discounts, gift cards, or other credits.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="bill-btn bill-btn-ghost bill-tax-adjust__add-btn"
+              onClick={withSparkle(addCredit)}
+            >
+              Add another
+            </button>
+          </div>
+          <ul className="bill-list bill-credits-list">
+            {credits.map((c, i) => (
+              <li key={c.id} className="bill-row bill-credit-row">
+                <label className="sr-only" htmlFor={`credit-amount-${c.id}`}>
+                  Credit amount
+                </label>
+                <span className="bill-input-prefix bill-input-prefix--off" aria-hidden="true">
+                  −$
+                </span>
+                <input
+                  id={`credit-amount-${c.id}`}
+                  className="bill-input bill-input-money bill-input--off"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={c.amount}
+                  onChange={(e) => updateCredit(c.id, { amount: e.target.value })}
+                />
+                <label className="sr-only" htmlFor={`credit-label-${c.id}`}>
+                  Credit label (optional)
+                </label>
+                <input
+                  id={`credit-label-${c.id}`}
+                  className="bill-input bill-input-grow bill-input--off"
+                  type="text"
+                  placeholder={i === 0 ? 'e.g. Gift card (optional)' : 'Label (optional)'}
+                  value={c.label}
+                  onChange={(e) => updateCredit(c.id, { label: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="bill-btn bill-btn-ghost"
+                  onClick={() => removeCredit(c.id)}
+                  disabled={credits.length <= 1 && !c.amount && !c.label}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+          {sumCreditAmounts(credits) > 0 ? (
+            <p className="bill-credits-total">
+              Total coming off: <strong>−{formatMoney(sumCreditAmounts(credits))}</strong>
+            </p>
+          ) : null}
+        </div>
+      </>
+    )
+  }
+
   return (
     <div className="bill-app bill-receipt">
       <header className="bill-header bill-receipt-header">
         <div className="bill-mobile-bar bill-mobile-only">
           <div className="bill-mobile-bar__top">
-            <h1 className="bill-mobile-title">Split the bill</h1>
-            <span className="bill-mobile-guests">
-              {people.length} {people.length === 1 ? 'guest' : 'guests'}
-            </span>
-            <button
-              type="button"
-              className="bill-btn bill-btn-ghost bill-btn-compact"
-              onClick={withSparkle(resetAll)}
-            >
-              Reset
-            </button>
+            <h1 className="bill-mobile-title">
+              {restaurantTitle.trim() || 'Split the bill'}
+            </h1>
+            {currentStep === 'summary' ? (
+              <button
+                type="button"
+                className="bill-btn bill-btn-ghost bill-btn-compact"
+                onClick={withSparkle(resetAll)}
+              >
+                Reset
+              </button>
+            ) : null}
           </div>
+          {currentStep === 'people' ? (
+            <>
+              <label className="sr-only" htmlFor="restaurant-title-mobile">
+                Restaurant or occasion
+              </label>
+              <input
+                id="restaurant-title-mobile"
+                className="bill-input bill-mobile-title-input"
+                type="text"
+                placeholder="Restaurant or occasion (optional)"
+                value={restaurantTitle}
+                onChange={(e) => setRestaurantTitle(e.target.value)}
+              />
+            </>
+          ) : null}
           <ol className="bill-progress-dots" aria-label="Steps">
             {STEPS.map((s) => {
               const isCurrent = s.id === currentStep
@@ -830,39 +975,80 @@ export default function App() {
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </span>
         </h2>
-        <p className="bill-muted bill-items-lede">
-          Add prices to create items, then assign who ate or shared each one.
-        </p>
-        <div className="bill-new-item" style={{ marginTop: 10 }}>
-          <div className="bill-row bill-new-item__top">
-            <label className="sr-only" htmlFor="new-item-price">
-              New item price
-            </label>
-            <input
-              id="new-item-price"
-              ref={newItemPriceRef}
-              className="bill-input bill-input-money"
-              type="text"
-              inputMode="decimal"
-              enterKeyHint="done"
-              autoCapitalize="none"
-              placeholder="0.00"
-              value={newItemPrice}
-              onChange={(e) => {
-                setNewItemPrice(e.target.value)
-                if (newItemError) setNewItemError('')
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  createNewItem()
-                }
-              }}
-            />
+        <div className="bill-new-item">
+          <div className="bill-new-item-step">
+            <span className="bill-new-item-step__num" aria-hidden="true">
+              1
+            </span>
+            <div className="bill-new-item-step__body">
+              <label className="bill-new-item-step__label" htmlFor="new-item-price">
+                Enter the price
+              </label>
+              <input
+                id="new-item-price"
+                ref={newItemPriceRef}
+                className="bill-input bill-input-money bill-input-block"
+                type="text"
+                inputMode="decimal"
+                enterKeyHint="done"
+                autoCapitalize="none"
+                placeholder="0.00"
+                value={newItemPrice}
+                onChange={(e) => {
+                  setNewItemPrice(e.target.value)
+                  if (newItemError) setNewItemError('')
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    createNewItem()
+                  }
+                }}
+              />
+            </div>
+          </div>
 
+          <div className="bill-new-item-step">
+            <span className="bill-new-item-step__num" aria-hidden="true">
+              2
+            </span>
+            <fieldset className="bill-assign bill-assign--new">
+              <legend className="bill-new-item-step__label">Select who had it</legend>
+              <div className="bill-chips">
+                {people.map((p, i) => {
+                  const checked = newItemAssigneeIds.includes(p.id)
+                  const label = p.name.trim() || `Person ${i + 1}`
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="bill-chip"
+                      role="checkbox"
+                      aria-checked={checked}
+                      onMouseDown={(e) => {
+                        // Avoid moving focus off the price input on desktop.
+                        e.preventDefault()
+                      }}
+                      onClick={() => {
+                        toggleNewItemAssignee(p.id)
+                        requestAnimationFrame(() => newItemPriceRef.current?.focus())
+                      }}
+                    >
+                      <span>{label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </fieldset>
+          </div>
+
+          <div className="bill-new-item-step bill-new-item-step--action">
+            <span className="bill-new-item-step__num" aria-hidden="true">
+              3
+            </span>
             <button
               type="button"
-              className="bill-btn bill-btn-primary"
+              className="bill-btn bill-btn-primary bill-new-item-create"
               onPointerDown={(e) => {
                 // Keep the price input focused so iOS doesn't dismiss the decimal keypad.
                 e.preventDefault()
@@ -877,44 +1063,15 @@ export default function App() {
             </button>
           </div>
 
-          <fieldset className="bill-assign bill-assign--new">
-            <legend>Who had this item?</legend>
-            <div className="bill-chips">
-              {people.map((p, i) => {
-                const checked = newItemAssigneeIds.includes(p.id)
-                const label = p.name.trim() || `Person ${i + 1}`
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className="bill-chip"
-                    role="checkbox"
-                    aria-checked={checked}
-                    onMouseDown={(e) => {
-                      // Avoid moving focus off the price input on desktop.
-                      e.preventDefault()
-                    }}
-                    onClick={() => {
-                      toggleNewItemAssignee(p.id)
-                      requestAnimationFrame(() => newItemPriceRef.current?.focus())
-                    }}
-                  >
-                    <span>{label}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </fieldset>
-
           {newItemError ? (
-            <p className="bill-warn" role="status" style={{ marginTop: 8 }}>
+            <p className="bill-warn" role="status">
               {newItemError}
             </p>
           ) : null}
         </div>
         {items.length === 0 ? (
           <p className="bill-muted bill-items-empty-callout">
-            No items yet. Add a price to get started.
+            No items yet. Follow the steps above to add your first one.
           </p>
         ) : null}
         <ul className="bill-items">
@@ -1025,91 +1182,42 @@ export default function App() {
           </div>
         </div>
 
-        <div className="bill-tax-optional" aria-labelledby="tax-optional-heading">
+        <div className="bill-tax-optional bill-desktop-only" aria-labelledby="tax-optional-heading">
           <h3 id="tax-optional-heading" className="bill-tax-section-title">
             Surcharge &amp; credits
           </h3>
           <p className="bill-hint bill-tax-section-lede">
             Leave blank unless your receipt includes these.
           </p>
-          <div className="bill-tax-field bill-tax-field--optional">
-            <label className="bill-label bill-label--optional" htmlFor="surcharge-amount">
-              Surcharge ($)
-            </label>
-            <p className="bill-hint bill-hint--tight">
-              Venue fee or service charge.
-            </p>
-            <input
-              id="surcharge-amount"
-              className="bill-input bill-input-block bill-input--optional"
-              type="text"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={surchargeAmount}
-              onChange={(e) => setSurchargeAmount(e.target.value)}
-            />
-          </div>
-          <div className="bill-credits bill-tax-field bill-tax-field--optional">
-            <div className="bill-panel-heading-row">
-              <div>
-                <span className="bill-label bill-label--optional" id="credits-heading">
-                  Credits ($)
-                </span>
-                <p className="bill-hint bill-hint--tight">
-                  Discounts, gift cards, or other credits. Add one line per credit.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="bill-btn bill-btn-ghost"
-                onClick={withSparkle(addCredit)}
-              >
-                Add another
-              </button>
-            </div>
-            <ul className="bill-list bill-credits-list">
-              {credits.map((c, i) => (
-                <li key={c.id} className="bill-row bill-credit-row">
-                  <label className="sr-only" htmlFor={`credit-amount-${c.id}`}>
-                    Credit amount
-                  </label>
-                  <input
-                    id={`credit-amount-${c.id}`}
-                    className="bill-input bill-input-money bill-input--optional"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={c.amount}
-                    onChange={(e) => updateCredit(c.id, { amount: e.target.value })}
-                  />
-                  <label className="sr-only" htmlFor={`credit-label-${c.id}`}>
-                    Credit label (optional)
-                  </label>
-                  <input
-                    id={`credit-label-${c.id}`}
-                    className="bill-input bill-input-grow bill-input--optional"
-                    type="text"
-                    placeholder={i === 0 ? 'e.g. Gift card (optional)' : 'Label (optional)'}
-                    value={c.label}
-                    onChange={(e) => updateCredit(c.id, { label: e.target.value })}
-                  />
-                  <button
-                    type="button"
-                    className="bill-btn bill-btn-ghost"
-                    onClick={() => removeCredit(c.id)}
-                    disabled={credits.length <= 1 && !c.amount && !c.label}
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {sumCreditAmounts(credits) > 0 ? (
-              <p className="bill-muted bill-credits-total">
-                Total credits: <strong>-{formatMoney(sumCreditAmounts(credits))}</strong>
+          {renderTaxOptionalFields()}
+        </div>
+
+        <div className="bill-tax-accordion bill-mobile-only">
+          <button
+            type="button"
+            className="bill-tax-accordion-trigger"
+            aria-expanded={taxOptionalOpen}
+            aria-controls="tax-optional-panel"
+            onClick={() => setTaxOptionalOpen((open) => !open)}
+          >
+            <span className="bill-tax-accordion-trigger__label">
+              More charges &amp; credits
+              {!taxOptionalOpen && hasOptionalTaxData ? (
+                <span className="bill-tax-accordion-trigger__note">Added</span>
+              ) : null}
+            </span>
+            <span className="bill-tax-accordion-chevron" aria-hidden="true">
+              {taxOptionalOpen ? '▾' : '▸'}
+            </span>
+          </button>
+          {taxOptionalOpen ? (
+            <div id="tax-optional-panel" className="bill-tax-accordion-panel">
+              <p className="bill-hint bill-tax-accordion-lede">
+                Leave blank unless your receipt includes these.
               </p>
-            ) : null}
-          </div>
+              {renderTaxOptionalFields()}
+            </div>
+          ) : null}
         </div>
       </section>
       ) : null}
@@ -1128,14 +1236,27 @@ export default function App() {
           </p>
         </div>
 
-        <p className="bill-muted bill-summary-meta">
+        <p className="bill-muted bill-summary-meta bill-desktop-only">
           Tax, tip, and surcharge are split proportionally by each person&apos;s food subtotal.
         </p>
 
-        <div className="bill-table-wrap">
-        <p className="scroll-hint">
-            ← scroll to see full summary →
-          </p>
+        <ul className="bill-summary-cards bill-mobile-only" aria-label="Per-person totals">
+          {totals.rows.map((r) => (
+            <li key={r.person.id} className="bill-summary-card">
+              <div className="bill-summary-card__top">
+                <span className="bill-summary-card__name">
+                  {personDisplayName(r.person, people)}
+                </span>
+                <strong className="bill-summary-card__total">{formatMoney(r.total)}</strong>
+              </div>
+              <p className="bill-summary-card__breakdown">
+                {summaryBreakdownParts(r).join(' · ')}
+              </p>
+            </li>
+          ))}
+        </ul>
+
+        <div className="bill-table-wrap bill-desktop-only">
           <table className="bill-table">
             <caption className="sr-only">Per-person amounts</caption>
             <thead>
@@ -1152,10 +1273,7 @@ export default function App() {
             <tbody>
               {totals.rows.map((r) => (
                 <tr key={r.person.id}>
-                  <th scope="row">
-                    {r.person.name.trim() ||
-                      `Person ${people.findIndex((x) => x.id === r.person.id) + 1}`}
-                  </th>
+                  <th scope="row">{personDisplayName(r.person, people)}</th>
                   <td>{formatMoney(r.subtotal)}</td>
                   <td>{formatMoney(r.surcharge)}</td>
                   <td>{formatMoney(r.tax)}</td>

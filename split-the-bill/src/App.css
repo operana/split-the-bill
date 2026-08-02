@@ -540,16 +540,15 @@ html, body {
 }
 
 .bill-mobile-bar {
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(13, 92, 156, 0.15);
-  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(13, 92, 156, 0.12);
+  margin-bottom: 8px;
 }
 
 .bill-mobile-bar__top {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
 }
 
 .bill-mobile-title {
@@ -570,6 +569,14 @@ html, body {
   letter-spacing: 0.05em;
   color: var(--diner-blue);
   white-space: nowrap;
+}
+
+.bill-mobile-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  padding: 8px 10px;
 }
 
 .bill-btn-compact {
@@ -736,9 +743,55 @@ html, body {
   outline-offset: 2px;
 }
 
-.bill-items-lede {
-  margin: 0 0 14px;
-  max-width: 42ch;
+.bill-new-item-step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.bill-new-item-step + .bill-new-item-step {
+  margin-top: 14px;
+}
+
+.bill-new-item-step__num {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--diner-red);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.bill-new-item-step__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bill-new-item-step__label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.bill-new-item-step--action {
+  align-items: center;
+}
+
+.bill-new-item-create {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
 }
 
 .bill-items-empty-callout {
@@ -836,29 +889,20 @@ html, body {
 .bill-new-item {
   border: 1px solid rgba(232, 184, 200, 0.85);
   border-radius: 6px;
-  padding: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 
-.bill-new-item__top {
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.bill-new-item__top .bill-btn {
-  min-height: 40px;
-  padding-left: 16px;
-  padding-right: 16px;
-}
-
-.bill-new-item__top .bill-input-money {
-  width: 8rem;
+.bill-new-item .bill-warn {
+  margin: 12px 0 0;
 }
 
 .bill-assign--new {
-  margin-top: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
 }
 
 .bill-assign--new legend {
@@ -937,6 +981,208 @@ html, body {
   background: rgba(255, 255, 255, 0.45);
 }
 
+.bill-tax-accordion-trigger {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(13, 92, 156, 0.2);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-weight: 600;
+  color: var(--diner-blue);
+  cursor: pointer;
+  text-align: left;
+  min-height: 48px;
+}
+
+.bill-tax-accordion-trigger__label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.bill-tax-accordion-trigger__note {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #2e7d32;
+  letter-spacing: 0.02em;
+}
+
+.bill-tax-accordion-chevron {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.bill-tax-accordion-panel {
+  margin-top: 12px;
+}
+
+.bill-tax-accordion-lede {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+}
+
+.bill-tax-adjust__hint {
+  max-width: none;
+}
+
+.bill-tax-adjust {
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.bill-tax-adjust + .bill-tax-adjust {
+  margin-top: 14px;
+}
+
+.bill-tax-adjust--add {
+  background: rgba(255, 231, 163, 0.42);
+  border-color: rgba(198, 152, 40, 0.45);
+}
+
+.bill-tax-adjust--off {
+  background: rgba(46, 125, 50, 0.08);
+  border-color: rgba(46, 125, 50, 0.32);
+}
+
+.bill-tax-adjust__header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.bill-tax-adjust__header--split {
+  flex-wrap: wrap;
+}
+
+.bill-tax-adjust__intro {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.bill-tax-adjust__add-btn {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-left: auto;
+}
+
+.bill-tax-adjust__badge {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+  font-family: var(--mono);
+}
+
+.bill-tax-adjust--add .bill-tax-adjust__badge {
+  background: rgba(198, 152, 40, 0.22);
+  color: #8d6e00;
+}
+
+.bill-tax-adjust--off .bill-tax-adjust__badge {
+  background: rgba(46, 125, 50, 0.16);
+  color: #2e7d32;
+}
+
+.bill-tax-adjust__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.bill-tax-adjust__title {
+  margin: 0;
+  font-family: var(--heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.bill-tax-adjust--add .bill-tax-adjust__title {
+  color: #7a5c00;
+}
+
+.bill-tax-adjust--off .bill-tax-adjust__title {
+  color: #2e7d32;
+}
+
+.bill-tax-adjust__tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--mono);
+}
+
+.bill-tax-adjust--add .bill-tax-adjust__tag {
+  background: rgba(198, 152, 40, 0.2);
+  color: #8d6e00;
+}
+
+.bill-tax-adjust--off .bill-tax-adjust__tag {
+  background: rgba(46, 125, 50, 0.14);
+  color: #2e7d32;
+}
+
+.bill-input--add {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(198, 152, 40, 0.45);
+}
+
+.bill-input--off {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(46, 125, 50, 0.35);
+}
+
+.bill-input-prefix {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(46, 125, 50, 0.35);
+  border-radius: 4px;
+  background: rgba(46, 125, 50, 0.1);
+  color: #2e7d32;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.bill-credit-row {
+  align-items: center;
+}
+
+.bill-credits-list {
+  margin-bottom: 8px;
+}
+
+.bill-credits-total {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2e7d32;
+}
+
 .bill-tax-section-title {
   margin: 0 0 6px;
   font-family: var(--heading);
@@ -959,35 +1205,9 @@ html, body {
   font-weight: 500;
 }
 
-.bill-tax-field--optional {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(83, 74, 66, 0.12);
-}
-
-.bill-tax-field--optional:first-of-type {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}
-
 .bill-input--optional {
   background: rgba(255, 255, 255, 0.75);
   border-style: dashed;
-}
-
-.bill-credits .bill-panel-heading-row {
-  margin-bottom: 12px;
-  align-items: flex-start;
-}
-
-.bill-credits-list {
-  margin-bottom: 8px;
-}
-
-.bill-credits-total {
-  margin: 0;
-  font-size: 0.9rem;
 }
 
 .bill-hint--tight {
@@ -1011,6 +1231,50 @@ html, body {
 
 .bill-summary-meta {
   margin-bottom: 16px;
+}
+
+.bill-summary-cards {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bill-summary-card {
+  border: 1px solid rgba(13, 92, 156, 0.15);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.bill-summary-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.bill-summary-card__name {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.bill-summary-card__total {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--diner-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-summary-card__breakdown {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text);
+  opacity: 0.88;
 }
 
 .bill-table-wrap {
@@ -1207,42 +1471,109 @@ html, body {
   .bill-app {
     padding: 0;
     max-width: none;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 
   .bill-receipt {
     border: 0;
     border-radius: 0;
     box-shadow: none;
-    padding: 12px 12px 0;
+    padding: 16px 16px 0;
+    background-image: none;
+    background-color: var(--bg);
   }
 
   .bill-receipt-header {
     padding-top: calc(8px + env(safe-area-inset-top, 0px));
-    padding-bottom: 8px;
+    padding-bottom: 6px;
     margin-bottom: 0;
+    border-bottom: none;
   }
 
   .bill-main {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 8px;
+    padding-bottom: 12px;
+  }
+
+  .bill-tax-required {
+    padding: 0;
+    margin-bottom: 16px;
+    border: none;
+    background: transparent;
+  }
+
+  .bill-tax-accordion {
+    margin-top: 4px;
   }
 
   .bill-step-nav--sticky {
-    margin-left: -12px;
-    margin-right: -12px;
-    padding-left: 12px;
-    padding-right: 12px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    margin: 0;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 253, 248, 0.97);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(232, 184, 200, 0.65);
+    box-shadow: 0 -6px 24px rgba(80, 40, 60, 0.1);
+  }
+
+  .bill-step-nav-buttons {
+    gap: 12px;
   }
 
   .bill-step-nav-back {
     flex: 0 0 auto;
-    min-width: 5.5rem;
+    min-width: 6.5rem;
+    min-height: 48px;
+    padding-left: 12px;
+    padding-right: 14px;
+    border: 1px solid rgba(13, 92, 156, 0.22);
+    background: #fff;
   }
 
   .bill-step-nav-next {
     flex: 1 1 auto;
-    min-height: 44px;
+    min-height: 48px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .bill-panel {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    padding: 12px 0 16px;
+    margin-bottom: 0;
+  }
+
+  .bill-panel--people,
+  .bill-panel--items,
+  .bill-panel--tax,
+  .bill-panel--summary {
+    background-image: none;
+    background-color: transparent;
+  }
+
+  .bill-panel h2 {
+    margin-bottom: 12px;
+  }
+
+  .bill-receipt-check--compact {
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .bill-receipt-check__amount {
+    font-size: 1.35rem;
+    color: var(--diner-red);
   }
 
   .bill-btn,
@@ -1262,6 +1593,7 @@ html, body {
   .bill-progress-dot--current {
     transform: scale(1.15);
   }
+}
 
 @media (hover: none) {
   .bill-btn:active:not(:disabled) {
